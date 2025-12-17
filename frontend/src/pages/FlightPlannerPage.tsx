@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Grid, Card, CardContent, Box, Chip, Divider, Typography } from '@mui/material'
+import { Grid, Card, CardContent, Box, Chip, Divider, Typography, Alert, Button, Paper } from '@mui/material'
 import { Flight, Schedule, Speed } from '@mui/icons-material'
 import { 
   PageHeader, 
@@ -19,6 +19,7 @@ import type { FlightPlan, FlightPlanRequest, LocalPlanRequest, RoutePlanRequest 
 
 const FlightPlannerPage: React.FC = () => {
   const [lastMode, setLastMode] = useState<'local' | 'route'>('route')
+  const [lastRequest, setLastRequest] = useState<FlightPlanRequest | null>(null)
   const [overlays, setOverlays] = useState<WeatherOverlays>({
     clouds: { enabled: false, opacity: 0.6 },
     wind: { enabled: false, opacity: 0.7 },
@@ -35,8 +36,10 @@ const FlightPlannerPage: React.FC = () => {
   })
 
   const isLoading = routePlanMutation.isLoading || localPlanMutation.isLoading
+  const error = routePlanMutation.error || localPlanMutation.error
 
   const planFlight = (req: FlightPlanRequest) => {
+    setLastRequest(req)
     setLastMode(req.mode)
     if (req.mode === 'route') {
       routePlanMutation.mutate(req)
@@ -60,6 +63,24 @@ const FlightPlannerPage: React.FC = () => {
         <Grid item xs={12} md={6}>
           {isLoading ? (
             <LoadingState message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'} />
+          ) : error ? (
+            <Paper sx={{ p: 3 }} role="alert">
+              <Alert
+                severity="error"
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    disabled={!lastRequest}
+                    onClick={() => lastRequest && planFlight(lastRequest)}
+                  >
+                    Retry
+                  </Button>
+                }
+              >
+                {error.message || 'Request failed. Please try again.'}
+              </Alert>
+            </Paper>
           ) : routePlan ? (
             <ResultsSection title="Route Results">
               <Card sx={{ mb: 2 }}>
