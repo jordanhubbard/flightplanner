@@ -23,6 +23,10 @@ dist/
 build/
 .vite/
 
+# Playwright
+test-results/
+playwright-report/
+
 # Local sources used for extraction (not committed)
 sources/
 

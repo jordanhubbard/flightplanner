@@ -117,6 +117,7 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
             <Autocomplete
               freeSolo
               options={originOptions}
+              inputValue={origin}
               getOptionLabel={(opt) => (typeof opt === 'string' ? opt : optionLabel(opt))}
               onInputChange={(_e, v) => setOrigin(v.toUpperCase())}
               onChange={(_e, v) => {
@@ -139,6 +140,7 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
             <Autocomplete
               freeSolo
               options={destinationOptions}
+              inputValue={destination}
               getOptionLabel={(opt) => (typeof opt === 'string' ? opt : optionLabel(opt))}
               onInputChange={(_e, v) => setDestination(v.toUpperCase())}
               onChange={(_e, v) => {
@@ -220,6 +222,7 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
             <Autocomplete
               freeSolo
               options={airportOptions}
+              inputValue={airport}
               getOptionLabel={(opt) => (typeof opt === 'string' ? opt : optionLabel(opt))}
               onInputChange={(_e, v) => setAirport(v.toUpperCase())}
               onChange={(_e, v) => {

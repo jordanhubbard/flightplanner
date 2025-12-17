@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from fractions import Fraction
 from typing import Any, Dict, Optional
@@ -10,6 +11,9 @@ from app.utils.ttl_cache import weather_cache
 
 
 def fetch_metar_raw(station: str) -> Optional[str]:
+    if os.environ.get("DISABLE_METAR_FETCH") == "1":
+        return None
+
     station_u = station.upper()
     cache_key = f"metar:{station_u}"
 

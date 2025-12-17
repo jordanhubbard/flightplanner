@@ -1,9 +1,9 @@
 import { apiClient } from './apiClient'
-import type { FlightPlan, FlightPlanRequest } from '../types'
+import type { FlightPlanRequest } from '../types'
 
 export const flightPlannerService = {
-  plan: async (data: FlightPlanRequest): Promise<FlightPlan> => {
-    const response = await apiClient.post<FlightPlan>('/plan', data)
+  plan: async <TResponse>(data: FlightPlanRequest): Promise<TResponse> => {
+    const response = await apiClient.post<TResponse>('/plan', data)
     return response.data
   },
 }

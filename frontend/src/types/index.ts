@@ -1,7 +1,10 @@
 export type {
   FlightPlan,
   FlightPlanRequest,
+  LocalPlanResponse,
   LocalPlanRequest,
+  LocalAirportSummary,
+  NearbyAirport,
   RoutePlanRequest,
   PlanMode,
   SpeedUnit,

@@ -16,7 +16,7 @@ import AlternateAirports from '../components/AlternateAirports'
 import WeatherOverlayControls, { type WeatherOverlays } from '../components/WeatherOverlayControls'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
-import type { FlightPlan, FlightPlanRequest, LocalPlanRequest, RoutePlanRequest } from '../types'
+import type { FlightPlan, FlightPlanRequest, LocalPlanRequest, LocalPlanResponse, RoutePlanRequest } from '../types'
 
 const FlightPlannerPage: React.FC = () => {
   const [lastMode, setLastMode] = useState<'local' | 'route'>('route')
@@ -28,11 +28,11 @@ const FlightPlannerPage: React.FC = () => {
     temperature: { enabled: false, opacity: 0.6 },
   })
 
-  const routePlanMutation = useApiMutation<FlightPlan, RoutePlanRequest>((data) => flightPlannerService.plan(data), {
+  const routePlanMutation = useApiMutation<FlightPlan, RoutePlanRequest>((data) => flightPlannerService.plan<FlightPlan>(data), {
     successMessage: 'Route planned successfully!',
   })
 
-  const localPlanMutation = useApiMutation<unknown, LocalPlanRequest>((data) => flightPlannerService.plan(data), {
+  const localPlanMutation = useApiMutation<LocalPlanResponse, LocalPlanRequest>((data) => flightPlannerService.plan<LocalPlanResponse>(data), {
     successMessage: 'Local plan generated successfully!',
   })
 
@@ -51,6 +51,7 @@ const FlightPlannerPage: React.FC = () => {
   }
 
   const routePlan = routePlanMutation.data
+  const localPlan = localPlanMutation.data
 
   return (
     <Box>
@@ -82,7 +83,7 @@ const FlightPlannerPage: React.FC = () => {
                 {error.message || 'Request failed. Please try again.'}
               </Alert>
             </Paper>
-          ) : routePlan ? (
+          ) : lastMode === 'route' && routePlan ? (
             <ResultsSection title="Route Results">
               <Card sx={{ mb: 2 }}>
                 <CardContent>
@@ -177,6 +178,27 @@ const FlightPlannerPage: React.FC = () => {
               </Box>
 
               <RouteMap plan={routePlan} overlays={overlays} />
+            </ResultsSection>
+          ) : lastMode === 'local' && localPlan ? (
+            <ResultsSection title="Local Results">
+              <Card sx={{ mb: 2 }}>
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Center: {localPlan.airport} (radius {localPlan.radius_nm} nm)
+                  </Typography>
+                  <Box sx={{ mb: 2 }}>
+                    {localPlan.nearby_airports.slice(0, 20).map((ap) => (
+                      <Chip
+                        key={ap.icao || ap.iata}
+                        label={`${ap.icao || ap.iata} (${ap.distance_nm.toFixed(1)} nm)`}
+                        variant="outlined"
+                        size="small"
+                        sx={{ mr: 1, mb: 1 }}
+                      />
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
             </ResultsSection>
           ) : (
             <EmptyState

@@ -75,4 +75,27 @@ export type LocalPlanRequest = {
   radius_nm?: number
 }
 
+export interface LocalAirportSummary {
+  icao: string
+  iata: string
+  name?: string | null
+  city: string
+  country: string
+  latitude: number
+  longitude: number
+  elevation?: number | null
+  type: string
+}
+
+export interface NearbyAirport extends LocalAirportSummary {
+  distance_nm: number
+}
+
+export interface LocalPlanResponse {
+  airport: string
+  radius_nm: number
+  center: LocalAirportSummary
+  nearby_airports: NearbyAirport[]
+}
+
 export type FlightPlanRequest = RoutePlanRequest | LocalPlanRequest
