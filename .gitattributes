@@ -1,3 +1,6 @@
 
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads
+
+# Git LFS (requires git-lfs)
+backend/data/** filter=lfs diff=lfs merge=lfs -text
