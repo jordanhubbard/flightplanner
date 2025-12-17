@@ -28,3 +28,4 @@ shapely
 # Testing
 pytest
 pytest-asyncio
+pytest-cov
