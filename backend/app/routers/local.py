@@ -44,7 +44,24 @@ def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return r_nm * c
 
 
-@router.post("/local", response_model=LocalPlanResponse)
+@router.post(
+    "/local",
+    response_model=LocalPlanResponse,
+    summary="Plan a local flight",
+    description="Returns nearby airports around a center airport within a radius.",
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "airport": "KSFO",
+                        "radius_nm": 25,
+                    }
+                }
+            }
+        }
+    },
+)
 def local_plan(req: LocalPlanRequest) -> Dict[str, Any]:
     radius_nm = float(req.radius_nm) if req.radius_nm is not None else 50.0
 

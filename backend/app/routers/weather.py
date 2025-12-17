@@ -12,7 +12,24 @@ from app.services import openweathermap
 router = APIRouter()
 
 
-@router.post("/weather/route", response_model=RouteWeatherResponse)
+@router.post(
+    "/weather/route",
+    response_model=RouteWeatherResponse,
+    summary="Sample weather along a route",
+    description="Samples Open-Meteo current weather at a subset of the provided points.",
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "points": [[37.6213, -122.3790], [34.0522, -118.2437]],
+                        "max_points": 10,
+                    }
+                }
+            }
+        }
+    },
+)
 def weather_route(req: RouteWeatherRequest) -> RouteWeatherResponse:
     if not req.points:
         raise HTTPException(status_code=400, detail="points cannot be empty")
@@ -41,7 +58,12 @@ def weather_route(req: RouteWeatherRequest) -> RouteWeatherResponse:
     return RouteWeatherResponse(points=out)
 
 
-@router.get("/weather/{code}/forecast", response_model=ForecastResponse)
+@router.get(
+    "/weather/{code}/forecast",
+    response_model=ForecastResponse,
+    summary="Daily forecast",
+    description="Daily forecast from Open-Meteo (1-16 days).",
+)
 def weather_forecast(code: str, days: int = 7) -> ForecastResponse:
     coords = get_airport_coordinates(code)
     if not coords:
@@ -60,7 +82,12 @@ def weather_forecast(code: str, days: int = 7) -> ForecastResponse:
         raise HTTPException(status_code=503, detail="Forecast service error")
 
 
-@router.get("/weather/{code}", response_model=WeatherData)
+@router.get(
+    "/weather/{code}",
+    response_model=WeatherData,
+    summary="Current weather",
+    description="Current conditions from OpenWeatherMap enriched with METAR parsing when available.",
+)
 def weather_for_airport(code: str) -> dict:
     coords = get_airport_coordinates(code)
     if not coords:

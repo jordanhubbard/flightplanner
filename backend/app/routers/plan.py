@@ -24,7 +24,43 @@ class PlanLocalRequest(LocalPlanRequest):
 PlanRequest = Annotated[Union[PlanRouteRequest, PlanLocalRequest], Field(discriminator="mode")]
 
 
-@router.post("/plan")
+@router.post(
+    "/plan",
+    summary="Plan a flight (route or local)",
+    description="Uses a discriminated union request body with `mode` set to `route` or `local`.",
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "route": {
+                            "summary": "Route planning",
+                            "value": {
+                                "mode": "route",
+                                "origin": "KSFO",
+                                "destination": "KLAX",
+                                "speed": 110,
+                                "speed_unit": "knots",
+                                "altitude": 5500,
+                                "avoid_airspaces": False,
+                                "avoid_terrain": False,
+                                "apply_wind": True,
+                            },
+                        },
+                        "local": {
+                            "summary": "Local planning",
+                            "value": {
+                                "mode": "local",
+                                "airport": "KSFO",
+                                "radius_nm": 25,
+                            },
+                        },
+                    }
+                }
+            }
+        }
+    },
+)
 def plan(req: PlanRequest) -> Any:
     if req.mode == "route":
         return route.calculate_route(req)

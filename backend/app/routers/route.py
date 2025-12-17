@@ -16,8 +16,32 @@ from app.services.xctry_route_planner import haversine_nm, plan_route
 router = APIRouter()
 
 
-@router.post("/route", response_model=RouteResponse)
+@router.post(
+    "/route",
+    response_model=RouteResponse,
+    summary="Plan a route",
+    description="Direct route planning endpoint. For a unified entrypoint, use `POST /api/plan`.",
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "example": {
+                        "origin": "KSFO",
+                        "destination": "KLAX",
+                        "speed": 110,
+                        "speed_unit": "knots",
+                        "altitude": 5500,
+                        "avoid_airspaces": False,
+                        "avoid_terrain": False,
+                        "apply_wind": True,
+                    }
+                }
+            }
+        }
+    },
+)
 def calculate_route(req: RouteRequest) -> RouteResponse:
+    """Plan a route between two airports."""
     origin = get_airport_coordinates(req.origin)
     dest = get_airport_coordinates(req.destination)
     if not origin or not dest:

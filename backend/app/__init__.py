@@ -11,6 +11,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
 from app.config import Settings
+from app.openapi import APP_DESCRIPTION, OPENAPI_TAGS
 from app.routers import airspace, airports, health, local, plan, route, terrain, weather
 
 
@@ -23,6 +24,8 @@ def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
+        description=APP_DESCRIPTION,
+        openapi_tags=OPENAPI_TAGS,
         debug=settings.debug,
         lifespan=lifespan,
     )
