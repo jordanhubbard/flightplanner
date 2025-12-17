@@ -1,5 +1,6 @@
 export { useApiMutation } from './useApiMutation'
 export { useWeather } from './useWeather'
+export { useForecast } from './useForecast'
 export { useAirportSearch, useAirportDetails } from './useAirports'
 export { useLocalStorage } from './useLocalStorage'
 export { useSearchHistory } from './useSearchHistory'

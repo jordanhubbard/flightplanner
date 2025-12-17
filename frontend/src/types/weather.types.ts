@@ -8,3 +8,17 @@ export interface WeatherData {
   ceiling: number
   metar: string
 }
+
+export interface DailyForecast {
+  date: string
+  temp_max_f: number | null
+  temp_min_f: number | null
+  precipitation_mm: number | null
+  wind_speed_max_kt: number | null
+}
+
+export interface ForecastResponse {
+  airport: string
+  days: number
+  daily: DailyForecast[]
+}
