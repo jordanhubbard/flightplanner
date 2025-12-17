@@ -20,6 +20,7 @@ class RouteRequest(BaseModel):
     reserve_minutes: int = 45
     fuel_strategy: Literal["time", "economy"] = "time"
     apply_wind: bool = False
+    include_alternates: bool = False
 
 
 class Segment(BaseModel):
@@ -29,6 +30,23 @@ class Segment(BaseModel):
     vfr_altitude: int
 
 
+class AlternateWeather(BaseModel):
+    metar: Optional[str] = None
+    visibility_sm: Optional[float] = None
+    ceiling_ft: Optional[int] = None
+    wind_speed_kt: Optional[int] = None
+    wind_direction_deg: Optional[int] = None
+    temperature_f: Optional[int] = None
+
+
+class AlternateAirport(BaseModel):
+    code: str
+    name: Optional[str] = None
+    type: Optional[str] = None
+    distance_nm: float
+    weather: Optional[AlternateWeather] = None
+
+
 class RouteResponse(BaseModel):
     route: List[str]
     distance_nm: float
@@ -36,6 +54,7 @@ class RouteResponse(BaseModel):
     origin_coords: Tuple[float, float]
     destination_coords: Tuple[float, float]
     segments: List[Segment]
+    alternates: Optional[List[AlternateAirport]] = None
     fuel_stops: Optional[List[str]] = None
     fuel_burn_gph: Optional[float] = None
     reserve_minutes: Optional[int] = None

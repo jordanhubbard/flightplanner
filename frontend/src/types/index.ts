@@ -6,6 +6,8 @@ export type {
   PlanMode,
   SpeedUnit,
   Segment,
+  AlternateAirport,
+  AlternateWeather,
 } from './flight.types'
 export type {
   WeatherData,

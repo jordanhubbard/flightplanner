@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.airport import get_airport_coordinates, load_airport_cache
 from app.schemas.route import RouteRequest, RouteResponse, Segment
 from app.services import a_star
+from app.services.alternates import recommend_alternates
 from app.services import open_meteo
 from app.services import terrain_service
 from app.services import wind
@@ -202,6 +203,18 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
             )
         )
 
+    alternates = None
+    if req.include_alternates:
+        try:
+            out = recommend_alternates(
+                destination_lat=float(d_lat),
+                destination_lon=float(d_lon),
+                exclude_codes=route_codes,
+            )
+            alternates = out or None
+        except Exception:
+            alternates = None
+
     return RouteResponse(
         route=route_codes,
         distance_nm=round(total_dist, 1),
@@ -209,6 +222,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         origin_coords=(o_lat, o_lon),
         destination_coords=(d_lat, d_lon),
         segments=segments,
+        alternates=alternates,
         fuel_stops=route_codes[1:-1] or None,
         fuel_burn_gph=fuel_burn,
         reserve_minutes=reserve_minutes,

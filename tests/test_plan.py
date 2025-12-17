@@ -15,6 +15,19 @@ def test_plan_route_mode_ok(monkeypatch) -> None:
     import app.routers.route as route_router
 
     monkeypatch.setattr(route_router, "get_airport_coordinates", fake_get_airport_coordinates)
+    monkeypatch.setattr(
+        route_router,
+        "recommend_alternates",
+        lambda **_: [
+            {
+                "code": "CCC",
+                "name": "Alt",
+                "type": "small_airport",
+                "distance_nm": 12.3,
+                "weather": {"visibility_sm": 10.0, "ceiling_ft": 5000},
+            }
+        ],
+    )
 
     client = TestClient(app)
     resp = client.post(
@@ -28,6 +41,7 @@ def test_plan_route_mode_ok(monkeypatch) -> None:
             "altitude": 5500,
             "avoid_airspaces": False,
             "avoid_terrain": False,
+            "include_alternates": True,
         },
     )
 
@@ -39,6 +53,7 @@ def test_plan_route_mode_ok(monkeypatch) -> None:
     assert "distance_nm" in body
     assert "time_hr" in body
     assert "segments" in body
+    assert body["alternates"][0]["code"] == "CCC"
 
 
 def test_plan_route_mode_terrain_requires_api_key(monkeypatch) -> None:

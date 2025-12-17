@@ -80,6 +80,7 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
         avoid_airspaces: avoidAirspaces,
         avoid_terrain: avoidTerrain,
         apply_wind: applyWind,
+        include_alternates: true,
       }
       onSubmit(req)
       return

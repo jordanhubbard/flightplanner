@@ -12,6 +12,7 @@ import RouteMap from '../components/RouteMap'
 import RouteLegsTable from '../components/RouteLegsTable'
 import ElevationProfile from '../components/ElevationProfile'
 import WeatherPanels from '../components/WeatherPanels'
+import AlternateAirports from '../components/AlternateAirports'
 import WeatherOverlayControls, { type WeatherOverlays } from '../components/WeatherOverlayControls'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
@@ -162,6 +163,14 @@ const FlightPlannerPage: React.FC = () => {
                   <WeatherPanels airports={routePlan.route} />
                 </CardContent>
               </Card>
+
+              {routePlan.alternates && routePlan.alternates.length > 0 ? (
+                <Card sx={{ mb: 2 }}>
+                  <CardContent>
+                    <AlternateAirports alternates={routePlan.alternates} />
+                  </CardContent>
+                </Card>
+              ) : null}
 
               <Box sx={{ mb: 2 }}>
                 <WeatherOverlayControls overlays={overlays} setOverlays={setOverlays} disabled={isLoading} />

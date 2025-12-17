@@ -9,6 +9,23 @@ export interface Segment {
   vfr_altitude: number
 }
 
+export interface AlternateWeather {
+  metar?: string | null
+  visibility_sm?: number | null
+  ceiling_ft?: number | null
+  wind_speed_kt?: number | null
+  wind_direction_deg?: number | null
+  temperature_f?: number | null
+}
+
+export interface AlternateAirport {
+  code: string
+  name?: string | null
+  type?: string | null
+  distance_nm: number
+  weather?: AlternateWeather | null
+}
+
 export interface FlightPlan {
   route: string[]
   distance_nm: number
@@ -16,6 +33,8 @@ export interface FlightPlan {
   origin_coords: [number, number]
   destination_coords: [number, number]
   segments: Segment[]
+
+  alternates?: AlternateAirport[] | null
 
   fuel_stops?: string[] | null
   fuel_burn_gph?: number | null
@@ -39,6 +58,7 @@ export type RoutePlanRequest = {
   altitude: number
   avoid_airspaces?: boolean
   avoid_terrain?: boolean
+  include_alternates?: boolean
 
   plan_fuel_stops?: boolean
   aircraft_range_nm?: number
