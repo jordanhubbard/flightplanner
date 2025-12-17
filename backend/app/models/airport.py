@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import difflib
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.utils.data_loader import load_airports
@@ -59,11 +61,35 @@ def _to_float(v: Any) -> Optional[float]:
 
 
 def search_airports(query: str, *, limit: int = 20) -> List[Dict[str, Any]]:
-    q = query.strip().lower()
-    if not q:
+    return search_airports_advanced(query=query, limit=limit)
+
+
+def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r_nm = 3440.065
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return r_nm * c
+
+
+def search_airports_advanced(
+    *,
+    query: str | None,
+    limit: int = 20,
+    lat: float | None = None,
+    lon: float | None = None,
+    radius_nm: float | None = None,
+) -> List[Dict[str, Any]]:
+    q = (query or "").strip().lower()
+    has_geo = lat is not None and lon is not None
+
+    if not q and not has_geo:
         return []
 
-    results: List[Dict[str, Any]] = []
+    candidates: List[Tuple[float, float, Dict[str, Any]]] = []
     seen: set[str] = set()
 
     for airport in load_airport_cache():
@@ -73,13 +99,15 @@ def search_airports(query: str, *, limit: int = 20) -> List[Dict[str, Any]]:
         city = str(airport.get("city") or "")
         country = str(airport.get("country") or "")
 
-        haystack = " ".join([icao_code, iata_code, name, city, country]).lower()
-        if q not in haystack:
+        lat_v, lon_v = _extract_lat_lon(airport)
+        if lat_v is None or lon_v is None:
             continue
 
-        lat, lon = _extract_lat_lon(airport)
-        if lat is None or lon is None:
-            continue
+        dist_nm: float | None = None
+        if has_geo:
+            dist_nm = _haversine_nm(float(lat), float(lon), float(lat_v), float(lon_v))
+            if radius_nm is not None and dist_nm > float(radius_nm):
+                continue
 
         normalized = {
             "icao": icao_code,
@@ -87,8 +115,8 @@ def search_airports(query: str, *, limit: int = 20) -> List[Dict[str, Any]]:
             "name": airport.get("name"),
             "city": airport.get("city") or "",
             "country": airport.get("country") or "",
-            "latitude": float(lat),
-            "longitude": float(lon),
+            "latitude": float(lat_v),
+            "longitude": float(lon_v),
             "elevation": airport.get("elevation"),
             "type": airport.get("type") or "",
         }
@@ -96,11 +124,41 @@ def search_airports(query: str, *, limit: int = 20) -> List[Dict[str, Any]]:
         key = normalized["icao"] or normalized["iata"] or f"{normalized['latitude']},{normalized['longitude']}"
         if key in seen:
             continue
-
         seen.add(key)
-        results.append(normalized)
 
-        if len(results) >= limit:
-            break
+        score = 0.0
+        if q:
+            code_hay = f"{icao_code} {iata_code}".lower()
+            text_hay = f"{icao_code} {iata_code} {name} {city} {country}".lower()
 
-    return results
+            if q == icao_code.lower() or (q and q == iata_code.lower()):
+                score = 1.0
+            elif icao_code.lower().startswith(q):
+                score = 0.95
+            elif iata_code.lower().startswith(q):
+                score = 0.9
+            elif q in code_hay:
+                score = 0.85
+            elif q in text_hay:
+                score = 0.65
+            else:
+                ratio = max(
+                    difflib.SequenceMatcher(None, q, icao_code.lower()).ratio(),
+                    difflib.SequenceMatcher(None, q, iata_code.lower()).ratio(),
+                    difflib.SequenceMatcher(None, q, name.lower()).ratio(),
+                )
+                if ratio < 0.6:
+                    continue
+                score = 0.5 + (ratio - 0.6) * 0.5
+
+        if dist_nm is not None:
+            normalized["distance_nm"] = round(dist_nm, 2)
+
+        candidates.append((score, dist_nm if dist_nm is not None else float("inf"), normalized))
+
+    if has_geo and not q:
+        candidates.sort(key=lambda t: t[1])
+    else:
+        candidates.sort(key=lambda t: (-t[0], t[1]))
+
+    return [item[2] for item in candidates[:limit]]

@@ -44,6 +44,22 @@ def test_airports_search_and_lookup(monkeypatch) -> None:
     assert results[0]["icao"] == "KPAO"
     assert results[0]["iata"] == "PAO"
 
+    resp_fuzzy = client.get("/api/airports/search", params={"q": "plao"})
+    assert resp_fuzzy.status_code == 200
+    results_fuzzy = resp_fuzzy.json()
+    assert results_fuzzy
+    assert results_fuzzy[0]["icao"] == "KPAO"
+
+    resp_nearby = client.get(
+        "/api/airports/search",
+        params={"lat": 37.47, "lon": -122.13, "radius_nm": 25, "limit": 5},
+    )
+    assert resp_nearby.status_code == 200
+    results_nearby = resp_nearby.json()
+    assert len(results_nearby) == 2
+    assert results_nearby[0]["icao"] == "KPAO"
+    assert "distance_nm" in results_nearby[0]
+
     resp2 = client.get("/api/airports/KSQL")
     assert resp2.status_code == 200
     airport = resp2.json()
