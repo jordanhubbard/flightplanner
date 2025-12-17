@@ -1,31 +1,11 @@
 from __future__ import annotations
 
-import json
-import logging
-import os
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-
-logger = logging.getLogger(__name__)
-
-
-def _default_airport_cache_path() -> Path:
-    repo_root = Path(__file__).resolve().parents[3]
-    return repo_root / "backend" / "data" / "airports_cache.json"
-
+from app.utils.data_loader import load_airports
 
 def load_airport_cache() -> List[Dict[str, Any]]:
-    cache_path = Path(os.environ.get("AIRPORT_CACHE_FILE", str(_default_airport_cache_path())))
-    if not cache_path.exists():
-        logger.warning(f"Airport cache file not found at {cache_path}")
-        return []
-
-    try:
-        return json.loads(cache_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        logger.error(f"Failed to load airport cache from {cache_path}: {e}")
-        return []
+    return load_airports()
 
 
 def get_airport_coordinates(code: str) -> Optional[Dict[str, Any]]:
