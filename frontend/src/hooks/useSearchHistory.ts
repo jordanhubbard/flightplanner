@@ -10,18 +10,15 @@ interface SearchHistoryItem {
 const MAX_HISTORY_ITEMS = 10
 
 export function useSearchHistory() {
-  const [history, setHistory] = useLocalStorage<SearchHistoryItem[]>(
-    STORAGE_KEYS.searchHistory,
-    []
-  )
+  const [history, setHistory] = useLocalStorage<SearchHistoryItem[]>(STORAGE_KEYS.searchHistory, [])
 
   const addToHistory = (query: string, type: SearchHistoryItem['type']) => {
     setHistory((prev) => {
       const filtered = prev.filter((item) => item.query !== query)
-      const newHistory = [
-        { query, timestamp: Date.now(), type },
-        ...filtered,
-      ].slice(0, MAX_HISTORY_ITEMS)
+      const newHistory = [{ query, timestamp: Date.now(), type }, ...filtered].slice(
+        0,
+        MAX_HISTORY_ITEMS,
+      )
       return newHistory
     })
   }

@@ -13,11 +13,11 @@ import {
 } from '@mui/material'
 import { LocalAirport, Search, LocationOn } from '@mui/icons-material'
 import toast from 'react-hot-toast'
-import { 
-  PageHeader, 
-  FormSection, 
-  EmptyState, 
-  LoadingState, 
+import {
+  PageHeader,
+  FormSection,
+  EmptyState,
+  LoadingState,
   ResultsSection,
   SearchHistoryDropdown,
   FavoriteButton,
@@ -43,12 +43,10 @@ const AirportsPage: React.FC = () => {
         toast.success(`Found ${data.length} airport${data.length !== 1 ? 's' : ''}`)
         addToHistory(searchTerm, 'airport')
       },
-    }
+    },
   )
 
-  const detailsMutation = useApiMutation<Airport, string>(
-    (icao) => airportService.getDetails(icao)
-  )
+  const detailsMutation = useApiMutation<Airport, string>((icao) => airportService.getDetails(icao))
 
   const handleSearch = () => {
     const validation = validateRequired(searchTerm, 'Search term')
@@ -72,22 +70,28 @@ const AirportsPage: React.FC = () => {
     if (searchError) setSearchError('')
   }
 
-  const handleFavoriteToggle = useCallback((airport: Airport) => {
-    if (isFavorite(airport.icao)) {
-      removeFavorite(airport.icao)
-      toast.success('Removed from favorites')
-    } else {
-      addFavorite(airport.icao, airport.name)
-      toast.success('Added to favorites')
-    }
-  }, [isFavorite, addFavorite, removeFavorite])
+  const handleFavoriteToggle = useCallback(
+    (airport: Airport) => {
+      if (isFavorite(airport.icao)) {
+        removeFavorite(airport.icao)
+        toast.success('Removed from favorites')
+      } else {
+        addFavorite(airport.icao, airport.name)
+        toast.success('Added to favorites')
+      }
+    },
+    [isFavorite, addFavorite, removeFavorite],
+  )
 
-  const handleHistorySelect = useCallback((query: string) => {
-    setSearchTerm(query)
-    setShowHistory(false)
-    // Auto-search
-    searchMutation.mutate(query)
-  }, [searchMutation])
+  const handleHistorySelect = useCallback(
+    (query: string) => {
+      setSearchTerm(query)
+      setShowHistory(false)
+      // Auto-search
+      searchMutation.mutate(query)
+    },
+    [searchMutation],
+  )
 
   const recentSearches = getRecentSearches('airport', 5)
 
@@ -97,7 +101,7 @@ const AirportsPage: React.FC = () => {
   return (
     <Box>
       <PageHeader icon={<LocalAirport />} title="Airport Information" />
-      
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <FormSection
@@ -116,7 +120,7 @@ const AirportsPage: React.FC = () => {
                   onChange={(e) => handleSearchTermChange(e.target.value)}
                   onFocus={() => setShowHistory(true)}
                   onBlur={() => setTimeout(() => setShowHistory(false), 200)}
-                  helperText={searchError || "Enter airport name, city, or ICAO/IATA code"}
+                  helperText={searchError || 'Enter airport name, city, or ICAO/IATA code'}
                   error={!!searchError}
                   disabled={searchMutation.isLoading}
                   InputProps={{
@@ -137,7 +141,7 @@ const AirportsPage: React.FC = () => {
               </Box>
             </Grid>
           </FormSection>
-            
+
           {searchMutation.isLoading ? (
             <Box sx={{ mt: 3 }}>
               <LoadingState message="Searching airports..." />
@@ -151,10 +155,10 @@ const AirportsPage: React.FC = () => {
                       key={airport.icao}
                       component="button"
                       onClick={() => handleSelectAirport(airport.icao)}
-                      sx={{ 
-                        border: 1, 
-                        borderColor: 'divider', 
-                        borderRadius: 1, 
+                      sx={{
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 1,
                         mb: 1,
                         cursor: 'pointer',
                         '&:hover': {
@@ -173,20 +177,10 @@ const AirportsPage: React.FC = () => {
                       <ListItemText
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="subtitle1">
-                              {airport.name}
-                            </Typography>
-                            <Chip 
-                              label={airport.icao} 
-                              size="small" 
-                              variant="outlined" 
-                            />
+                            <Typography variant="subtitle1">{airport.name}</Typography>
+                            <Chip label={airport.icao} size="small" variant="outlined" />
                             {airport.iata && (
-                              <Chip 
-                                label={airport.iata} 
-                                size="small" 
-                                variant="outlined" 
-                              />
+                              <Chip label={airport.iata} size="small" variant="outlined" />
                             )}
                           </Box>
                         }
@@ -199,7 +193,7 @@ const AirportsPage: React.FC = () => {
             </Box>
           ) : null}
         </Grid>
-        
+
         <Grid item xs={12} md={6}>
           {detailsMutation.isLoading ? (
             <LoadingState message="Loading airport details..." />
@@ -207,7 +201,13 @@ const AirportsPage: React.FC = () => {
             <ResultsSection title="Airport Details">
               <Card>
                 <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                    }}
+                  >
                     <Typography variant="h5" gutterBottom>
                       {selectedAirport.name}
                     </Typography>
@@ -217,26 +217,15 @@ const AirportsPage: React.FC = () => {
                       label={selectedAirport.icao}
                     />
                   </Box>
-                  
+
                   <Box sx={{ mb: 2 }}>
-                    <Chip 
-                      label={selectedAirport.icao} 
-                      color="primary" 
-                      sx={{ mr: 1 }} 
-                    />
+                    <Chip label={selectedAirport.icao} color="primary" sx={{ mr: 1 }} />
                     {selectedAirport.iata && (
-                      <Chip 
-                        label={selectedAirport.iata} 
-                        color="secondary" 
-                        sx={{ mr: 1 }} 
-                      />
+                      <Chip label={selectedAirport.iata} color="secondary" sx={{ mr: 1 }} />
                     )}
-                    <Chip 
-                      label={selectedAirport.type} 
-                      variant="outlined" 
-                    />
+                    <Chip label={selectedAirport.type} variant="outlined" />
                   </Box>
-                  
+
                   <Grid container spacing={2}>
                     <Grid item xs={12}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -246,7 +235,7 @@ const AirportsPage: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <Typography variant="body2" color="text.secondary">
                         Latitude
@@ -255,7 +244,7 @@ const AirportsPage: React.FC = () => {
                         {selectedAirport.latitude.toFixed(6)}°
                       </Typography>
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <Typography variant="body2" color="text.secondary">
                         Longitude
@@ -264,14 +253,12 @@ const AirportsPage: React.FC = () => {
                         {selectedAirport.longitude.toFixed(6)}°
                       </Typography>
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <Typography variant="body2" color="text.secondary">
                         Elevation
                       </Typography>
-                      <Typography variant="body1">
-                        {selectedAirport.elevation} ft
-                      </Typography>
+                      <Typography variant="body1">{selectedAirport.elevation} ft</Typography>
                     </Grid>
                   </Grid>
                 </CardContent>

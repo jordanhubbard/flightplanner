@@ -57,7 +57,12 @@ def test_weather_route_smoke(client: TestClient, monkeypatch) -> None:
     monkeypatch.setattr(
         weather_router.open_meteo,
         "get_current_weather",
-        lambda lat, lon: {"temperature": 70.0, "windspeed": 10.0, "winddirection": 180, "time": "2025-01-01T00:00"},
+        lambda lat, lon: {
+            "temperature": 70.0,
+            "windspeed": 10.0,
+            "winddirection": 180,
+            "time": "2025-01-01T00:00",
+        },
     )
 
     resp = client.post(

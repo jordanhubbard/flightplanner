@@ -10,23 +10,20 @@ interface UseApiMutationOptions<TData> {
 
 export function useApiMutation<TData, TVariables>(
   mutationFn: (variables: TVariables) => Promise<TData>,
-  options?: UseApiMutationOptions<TData>
+  options?: UseApiMutationOptions<TData>,
 ): UseMutationResult<TData, Error, TVariables> {
-  return useMutation<TData, Error, TVariables>(
-    mutationFn,
-    {
-      onSuccess: (data) => {
-        if (options?.successMessage) {
-          toast.success(options.successMessage)
-        }
-        options?.onSuccess?.(data)
-      },
-      onError: (error) => {
-        if (options?.errorMessage) {
-          toast.error(options.errorMessage)
-        }
-        options?.onError?.(error)
-      },
-    }
-  )
+  return useMutation<TData, Error, TVariables>(mutationFn, {
+    onSuccess: (data) => {
+      if (options?.successMessage) {
+        toast.success(options.successMessage)
+      }
+      options?.onSuccess?.(data)
+    },
+    onError: (error) => {
+      if (options?.errorMessage) {
+        toast.error(options.errorMessage)
+      }
+      options?.onError?.(error)
+    },
+  })
 }

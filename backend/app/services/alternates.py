@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence, Set
+from typing import List, Optional, Sequence, Set
 
 from app.models.airport import search_airports_advanced
 from app.schemas.route import AlternateAirport, AlternateWeather
@@ -98,9 +98,21 @@ def recommend_alternates(
                 metar=raw_metar,
                 visibility_sm=float(vis) if isinstance(vis, (int, float)) else None,
                 ceiling_ft=int(ceil) if isinstance(ceil, int) else None,
-                wind_speed_kt=int(parsed["wind_speed_kt"]) if isinstance(parsed.get("wind_speed_kt"), int) else None,
-                wind_direction_deg=int(parsed["wind_direction"]) if isinstance(parsed.get("wind_direction"), int) else None,
-                temperature_f=int(parsed["temperature_f"]) if isinstance(parsed.get("temperature_f"), int) else None,
+                wind_speed_kt=(
+                    int(parsed["wind_speed_kt"])
+                    if isinstance(parsed.get("wind_speed_kt"), int)
+                    else None
+                ),
+                wind_direction_deg=(
+                    int(parsed["wind_direction"])
+                    if isinstance(parsed.get("wind_direction"), int)
+                    else None
+                ),
+                temperature_f=(
+                    int(parsed["temperature_f"])
+                    if isinstance(parsed.get("temperature_f"), int)
+                    else None
+                ),
             )
         else:
             penalty += 50.0

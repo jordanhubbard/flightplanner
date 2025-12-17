@@ -21,9 +21,13 @@ apiClient.interceptors.response.use(
       toast.error('Resource not found.')
     } else if (!error.response) {
       toast.error('Network error. Check your connection.')
-    } else if (error.response?.data && typeof error.response.data === 'object' && 'detail' in error.response.data) {
+    } else if (
+      error.response?.data &&
+      typeof error.response.data === 'object' &&
+      'detail' in error.response.data
+    ) {
       toast.error(String(error.response.data.detail))
     }
     return Promise.reject(error)
-  }
+  },
 )

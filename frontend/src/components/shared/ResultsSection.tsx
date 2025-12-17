@@ -13,7 +13,12 @@ const ResultsSectionComponent: React.FC<ResultsSectionProps> = ({ title, childre
       role="region"
       aria-labelledby={`results-${title.replace(/\s+/g, '-').toLowerCase()}`}
     >
-      <Typography variant="h6" gutterBottom component="h2" id={`results-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+      <Typography
+        variant="h6"
+        gutterBottom
+        component="h2"
+        id={`results-${title.replace(/\s+/g, '-').toLowerCase()}`}
+      >
         {title}
       </Typography>
       {children}

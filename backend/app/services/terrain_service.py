@@ -14,7 +14,9 @@ class TerrainServiceError(RuntimeError):
 def _api_key() -> str:
     key = os.environ.get("OPENTOPOGRAPHY_API_KEY")
     if not key:
-        raise TerrainServiceError("Missing OPENTOPOGRAPHY_API_KEY for OpenTopography terrain requests")
+        raise TerrainServiceError(
+            "Missing OPENTOPOGRAPHY_API_KEY for OpenTopography terrain requests"
+        )
     return key
 
 
@@ -88,7 +90,9 @@ def get_elevation_ft(lat: float, lon: float, demtype: str = "SRTMGL1") -> Option
     return elev_m * 3.28084
 
 
-def max_elevation_ft_along_points(points: Iterable[Tuple[float, float]], demtype: str = "SRTMGL1") -> Optional[float]:
+def max_elevation_ft_along_points(
+    points: Iterable[Tuple[float, float]], demtype: str = "SRTMGL1"
+) -> Optional[float]:
     max_ft: Optional[float] = None
     for lat, lon in points:
         elev_ft = get_elevation_ft(lat, lon, demtype=demtype)

@@ -1,12 +1,22 @@
 import React, { useState, useCallback } from 'react'
-import { Grid, TextField, Card, CardContent, Box, InputAdornment, Typography, Alert, Divider } from '@mui/material'
+import {
+  Grid,
+  TextField,
+  Card,
+  CardContent,
+  Box,
+  InputAdornment,
+  Typography,
+  Alert,
+  Divider,
+} from '@mui/material'
 import { Cloud, Thermostat, Air, Visibility } from '@mui/icons-material'
 import toast from 'react-hot-toast'
-import { 
-  PageHeader, 
-  FormSection, 
-  EmptyState, 
-  LoadingState, 
+import {
+  PageHeader,
+  FormSection,
+  EmptyState,
+  LoadingState,
   ResultsSection,
   SearchHistoryDropdown,
   FavoriteButton,
@@ -31,7 +41,7 @@ const WeatherPage: React.FC = () => {
       onSuccess: () => {
         addToHistory(airport.toUpperCase(), 'weather')
       },
-    }
+    },
   )
 
   const getWeather = () => {
@@ -41,7 +51,7 @@ const WeatherPage: React.FC = () => {
       toast.error(validation.error || 'Invalid airport code')
       return
     }
-    
+
     setValidationError('')
     setShowHistory(false)
     weatherMutation.mutate(airport.toUpperCase())
@@ -65,15 +75,18 @@ const WeatherPage: React.FC = () => {
     }
   }, [airport, weatherMutation.data, isFavorite, addFavorite, removeFavorite])
 
-  const handleHistorySelect = useCallback((query: string) => {
-    setAirport(query)
-    setShowHistory(false)
-    // Auto-fetch weather for selected item
-    const validation = validateAirportCode(query)
-    if (validation.valid) {
-      weatherMutation.mutate(query)
-    }
-  }, [weatherMutation])
+  const handleHistorySelect = useCallback(
+    (query: string) => {
+      setAirport(query)
+      setShowHistory(false)
+      // Auto-fetch weather for selected item
+      const validation = validateAirportCode(query)
+      if (validation.valid) {
+        weatherMutation.mutate(query)
+      }
+    },
+    [weatherMutation],
+  )
 
   const recentSearches = getRecentSearches('weather', 5)
 
@@ -84,7 +97,7 @@ const WeatherPage: React.FC = () => {
   return (
     <Box>
       <PageHeader icon={<Cloud />} title="Weather Information" />
-      
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <FormSection
@@ -103,7 +116,7 @@ const WeatherPage: React.FC = () => {
                   onChange={(e) => handleAirportChange(e.target.value)}
                   onFocus={() => setShowHistory(true)}
                   onBlur={() => setTimeout(() => setShowHistory(false), 200)}
-                  helperText={validationError || "Enter ICAO or IATA code"}
+                  helperText={validationError || 'Enter ICAO or IATA code'}
                   error={!!validationError}
                   disabled={weatherMutation.isLoading}
                   InputProps={{
@@ -134,7 +147,7 @@ const WeatherPage: React.FC = () => {
             </Grid>
           </FormSection>
         </Grid>
-        
+
         <Grid item xs={12} md={6}>
           {weatherMutation.isLoading ? (
             <LoadingState message="Fetching weather data..." />
@@ -144,14 +157,19 @@ const WeatherPage: React.FC = () => {
                 <CardContent>
                   {weatherData.flight_category ? (
                     <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2">Flight category: {weatherData.flight_category}</Typography>
+                      <Typography variant="subtitle2">
+                        Flight category: {weatherData.flight_category}
+                      </Typography>
                       {weatherData.recommendation ? (
                         <Typography variant="body2" color="text.secondary">
                           {weatherData.recommendation}
                         </Typography>
                       ) : null}
                       {weatherData.warnings && weatherData.warnings.length > 0 ? (
-                        <Alert severity={weatherData.flight_category === 'VFR' ? 'info' : 'warning'} sx={{ mt: 1 }}>
+                        <Alert
+                          severity={weatherData.flight_category === 'VFR' ? 'info' : 'warning'}
+                          sx={{ mt: 1 }}
+                        >
                           {weatherData.warnings.join(' ')}
                         </Alert>
                       ) : null}
@@ -161,17 +179,15 @@ const WeatherPage: React.FC = () => {
                   <Typography variant="h6" gutterBottom>
                     {weatherData.conditions}
                   </Typography>
-                  
+
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <Thermostat sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="body1">
-                          {weatherData.temperature}°F
-                        </Typography>
+                        <Typography variant="body1">{weatherData.temperature}°F</Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <Air sx={{ mr: 1, color: 'primary.main' }} />
@@ -180,26 +196,22 @@ const WeatherPage: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <Visibility sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="body1">
-                          {weatherData.visibility} SM
-                        </Typography>
+                        <Typography variant="body1">{weatherData.visibility} SM</Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <Cloud sx={{ mr: 1, color: 'primary.main' }} />
-                        <Typography variant="body1">
-                          {weatherData.ceiling} ft
-                        </Typography>
+                        <Typography variant="body1">{weatherData.ceiling} ft</Typography>
                       </Box>
                     </Grid>
                   </Grid>
-                  
+
                   {weatherData.metar && (
                     <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
                       <Typography variant="caption" color="text.secondary">

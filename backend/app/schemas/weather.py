@@ -34,7 +34,9 @@ class ForecastResponse(BaseModel):
 
 
 class RouteWeatherRequest(BaseModel):
-    points: List[tuple[float, float]] = Field(..., description="Route polyline points as (lat, lon)")
+    points: List[tuple[float, float]] = Field(
+        ..., description="Route polyline points as (lat, lon)"
+    )
     max_points: int = 10
 
 

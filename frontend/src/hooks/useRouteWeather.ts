@@ -6,7 +6,7 @@ import type { RouteWeatherResponse } from '../types'
 export function useRouteWeather(
   points: Array<[number, number]>,
   maxPoints = 10,
-  enabled = true
+  enabled = true,
 ): UseQueryResult<RouteWeatherResponse, Error> {
   const pointsKey = useMemo(() => points.map((p) => p.join(',')).join('|'), [points])
 
@@ -17,6 +17,6 @@ export function useRouteWeather(
       enabled: enabled && points.length > 1,
       staleTime: 5 * 60 * 1000,
       retry: 1,
-    }
+    },
   )
 }

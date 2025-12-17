@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.terrain import TerrainPointResponse, TerrainProfilePoint, TerrainProfileRequest, TerrainProfileResponse
+from app.schemas.terrain import (
+    TerrainPointResponse,
+    TerrainProfilePoint,
+    TerrainProfileRequest,
+    TerrainProfileResponse,
+)
 from app.services import terrain_service
 
 router = APIRouter()
@@ -59,5 +64,8 @@ def terrain_profile(req: TerrainProfileRequest) -> TerrainProfileResponse:
 
     return TerrainProfileResponse(
         demtype=req.demtype,
-        points=[TerrainProfilePoint(latitude=lat, longitude=lon, elevation_ft=elev_ft) for lat, lon, elev_ft in prof],
+        points=[
+            TerrainProfilePoint(latitude=lat, longitude=lon, elevation_ft=elev_ft)
+            for lat, lon, elev_ft in prof
+        ],
     )

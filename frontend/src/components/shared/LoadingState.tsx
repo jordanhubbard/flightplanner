@@ -5,19 +5,17 @@ interface LoadingStateProps {
   message?: string
 }
 
-const LoadingStateComponent: React.FC<LoadingStateProps> = ({ 
-  message = 'Loading...' 
-}) => {
+const LoadingStateComponent: React.FC<LoadingStateProps> = ({ message = 'Loading...' }) => {
   return (
     <Paper sx={{ p: 3 }} role="status" aria-live="polite" aria-busy="true">
-      <Box 
-        sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
           justifyContent: 'center',
           minHeight: 200,
-          gap: 2
+          gap: 2,
         }}
       >
         <CircularProgress aria-label="Loading" />

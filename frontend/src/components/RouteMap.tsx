@@ -1,7 +1,15 @@
 import React, { useMemo } from 'react'
 import { Box, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap } from 'react-leaflet'
+import {
+  MapContainer,
+  TileLayer,
+  Polyline,
+  CircleMarker,
+  Marker,
+  Popup,
+  useMap,
+} from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -142,7 +150,11 @@ const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
               </Marker>
             ))}
 
-        <CircleMarker center={[plan.origin_coords[0], plan.origin_coords[1]]} radius={8} pathOptions={{ color: 'green' }}>
+        <CircleMarker
+          center={[plan.origin_coords[0], plan.origin_coords[1]]}
+          radius={8}
+          pathOptions={{ color: 'green' }}
+        >
           <Popup>Origin</Popup>
         </CircleMarker>
 

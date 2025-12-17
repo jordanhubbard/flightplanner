@@ -9,10 +9,7 @@ export interface Favorite {
 }
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useLocalStorage<Favorite[]>(
-    STORAGE_KEYS.favorites,
-    []
-  )
+  const [favorites, setFavorites] = useLocalStorage<Favorite[]>(STORAGE_KEYS.favorites, [])
 
   const addFavorite = (code: string, name?: string, type: Favorite['type'] = 'airport') => {
     setFavorites((prev) => {
@@ -25,9 +22,7 @@ export function useFavorites() {
   }
 
   const removeFavorite = (code: string, type: Favorite['type'] = 'airport') => {
-    setFavorites((prev) => 
-      prev.filter((fav) => !(fav.code === code && fav.type === type))
-    )
+    setFavorites((prev) => prev.filter((fav) => !(fav.code === code && fav.type === type)))
   }
 
   const isFavorite = (code: string, type: Favorite['type'] = 'airport'): boolean => {
@@ -35,9 +30,7 @@ export function useFavorites() {
   }
 
   const getFavoritesByType = (type: Favorite['type']) => {
-    return favorites
-      .filter((fav) => fav.type === type)
-      .sort((a, b) => b.addedAt - a.addedAt)
+    return favorites.filter((fav) => fav.type === type).sort((a, b) => b.addedAt - a.addedAt)
   }
 
   const clearFavorites = () => {

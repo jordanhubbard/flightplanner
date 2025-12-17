@@ -80,7 +80,9 @@ def weather_forecast(code: str, days: int = 7) -> ForecastResponse:
         raise HTTPException(status_code=404, detail=f"Unknown airport '{code}'")
 
     try:
-        daily = open_meteo.get_daily_forecast(lat=float(coords["latitude"]), lon=float(coords["longitude"]), days=days)
+        daily = open_meteo.get_daily_forecast(
+            lat=float(coords["latitude"]), lon=float(coords["longitude"]), days=days
+        )
         return ForecastResponse(
             airport=code.upper(),
             days=days,
@@ -104,7 +106,9 @@ def weather_for_airport(code: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Unknown airport '{code}'")
 
     try:
-        payload = openweathermap.get_current_weather(lat=float(coords["latitude"]), lon=float(coords["longitude"]))
+        payload = openweathermap.get_current_weather(
+            lat=float(coords["latitude"]), lon=float(coords["longitude"])
+        )
         data = openweathermap.to_weather_data(code, payload)
 
         raw = metar.fetch_metar_raw(code.upper())
@@ -123,15 +127,21 @@ def weather_for_airport(code: str) -> dict:
                 data["ceiling"] = parsed["ceiling_ft"]
 
         cat = flight_recommendations.flight_category(
-            visibility_sm=float(data.get("visibility")) if data.get("visibility") is not None else None,
+            visibility_sm=(
+                float(data.get("visibility")) if data.get("visibility") is not None else None
+            ),
             ceiling_ft=float(data.get("ceiling")) if data.get("ceiling") is not None else None,
         )
         data["flight_category"] = cat
         data["recommendation"] = flight_recommendations.recommendation_for_category(cat)
         data["warnings"] = flight_recommendations.warnings_for_conditions(
-            visibility_sm=float(data.get("visibility")) if data.get("visibility") is not None else None,
+            visibility_sm=(
+                float(data.get("visibility")) if data.get("visibility") is not None else None
+            ),
             ceiling_ft=float(data.get("ceiling")) if data.get("ceiling") is not None else None,
-            wind_speed_kt=float(data.get("wind_speed")) if data.get("wind_speed") is not None else None,
+            wind_speed_kt=(
+                float(data.get("wind_speed")) if data.get("wind_speed") is not None else None
+            ),
         )
 
         return data
@@ -171,7 +181,9 @@ def weather_recommendations(code: str) -> WeatherRecommendationsResponse:
     )
 
     try:
-        hourly = open_meteo.get_hourly_forecast(lat=float(coords["latitude"]), lon=float(coords["longitude"]), hours=24)
+        hourly = open_meteo.get_hourly_forecast(
+            lat=float(coords["latitude"]), lon=float(coords["longitude"]), hours=24
+        )
         windows = flight_recommendations.best_departure_windows(hourly)
     except Exception:
         windows = []

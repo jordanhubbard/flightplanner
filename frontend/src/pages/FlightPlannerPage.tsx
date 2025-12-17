@@ -1,12 +1,18 @@
 import React, { useState } from 'react'
-import { Grid, Card, CardContent, Box, Chip, Divider, Typography, Alert, Button, Paper } from '@mui/material'
+import {
+  Grid,
+  Card,
+  CardContent,
+  Box,
+  Chip,
+  Divider,
+  Typography,
+  Alert,
+  Button,
+  Paper,
+} from '@mui/material'
 import { Flight, Schedule, Speed } from '@mui/icons-material'
-import { 
-  PageHeader, 
-  EmptyState, 
-  LoadingState, 
-  ResultsSection 
-} from '../components/shared'
+import { PageHeader, EmptyState, LoadingState, ResultsSection } from '../components/shared'
 import FlightPlanningForm from '../components/FlightPlanningForm'
 import RouteMap from '../components/RouteMap'
 import RouteLegsTable from '../components/RouteLegsTable'
@@ -16,7 +22,13 @@ import AlternateAirports from '../components/AlternateAirports'
 import WeatherOverlayControls, { type WeatherOverlays } from '../components/WeatherOverlayControls'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
-import type { FlightPlan, FlightPlanRequest, LocalPlanRequest, LocalPlanResponse, RoutePlanRequest } from '../types'
+import type {
+  FlightPlan,
+  FlightPlanRequest,
+  LocalPlanRequest,
+  LocalPlanResponse,
+  RoutePlanRequest,
+} from '../types'
 
 const FlightPlannerPage: React.FC = () => {
   const [lastMode, setLastMode] = useState<'local' | 'route'>('route')
@@ -28,13 +40,19 @@ const FlightPlannerPage: React.FC = () => {
     temperature: { enabled: false, opacity: 0.6 },
   })
 
-  const routePlanMutation = useApiMutation<FlightPlan, RoutePlanRequest>((data) => flightPlannerService.plan<FlightPlan>(data), {
-    successMessage: 'Route planned successfully!',
-  })
+  const routePlanMutation = useApiMutation<FlightPlan, RoutePlanRequest>(
+    (data) => flightPlannerService.plan<FlightPlan>(data),
+    {
+      successMessage: 'Route planned successfully!',
+    },
+  )
 
-  const localPlanMutation = useApiMutation<LocalPlanResponse, LocalPlanRequest>((data) => flightPlannerService.plan<LocalPlanResponse>(data), {
-    successMessage: 'Local plan generated successfully!',
-  })
+  const localPlanMutation = useApiMutation<LocalPlanResponse, LocalPlanRequest>(
+    (data) => flightPlannerService.plan<LocalPlanResponse>(data),
+    {
+      successMessage: 'Local plan generated successfully!',
+    },
+  )
 
   const isLoading = routePlanMutation.isLoading || localPlanMutation.isLoading
   const error = routePlanMutation.error || localPlanMutation.error
@@ -56,15 +74,17 @@ const FlightPlannerPage: React.FC = () => {
   return (
     <Box>
       <PageHeader icon={<Flight />} title="VFR Flight Planner" />
-      
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <FlightPlanningForm isLoading={isLoading} onSubmit={planFlight} />
         </Grid>
-        
+
         <Grid item xs={12} md={6}>
           {isLoading ? (
-            <LoadingState message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'} />
+            <LoadingState
+              message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'}
+            />
           ) : error ? (
             <Paper sx={{ p: 3 }} role="alert">
               <Alert
@@ -90,7 +110,7 @@ const FlightPlannerPage: React.FC = () => {
                   <Typography variant="subtitle1" gutterBottom>
                     Route: {routePlan.route.join(' → ')}
                   </Typography>
-                  
+
                   <Box sx={{ mb: 2 }}>
                     {routePlan.route.map((waypoint, index) => (
                       <Chip
@@ -102,9 +122,9 @@ const FlightPlannerPage: React.FC = () => {
                       />
                     ))}
                   </Box>
-                  
+
                   <Divider sx={{ my: 2 }} />
-                  
+
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -114,13 +134,11 @@ const FlightPlannerPage: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
-                    
+
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Schedule sx={{ mr: 1, fontSize: 20 }} />
-                        <Typography variant="body2">
-                          Time: {routePlan.time_hr} hr
-                        </Typography>
+                        <Typography variant="body2">Time: {routePlan.time_hr} hr</Typography>
                       </Box>
                     </Grid>
 
@@ -128,7 +146,9 @@ const FlightPlannerPage: React.FC = () => {
                       <Grid item xs={6}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <Speed sx={{ mr: 1, fontSize: 20 }} />
-                          <Typography variant="body2">Groundspeed: {routePlan.groundspeed_kt} kt</Typography>
+                          <Typography variant="body2">
+                            Groundspeed: {routePlan.groundspeed_kt} kt
+                          </Typography>
                         </Box>
                       </Grid>
                     )}
@@ -138,7 +158,8 @@ const FlightPlannerPage: React.FC = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <Speed sx={{ mr: 1, fontSize: 20 }} />
                           <Typography variant="body2">
-                            {routePlan.headwind_kt >= 0 ? 'Headwind' : 'Tailwind'}: {Math.abs(routePlan.headwind_kt)} kt
+                            {routePlan.headwind_kt >= 0 ? 'Headwind' : 'Tailwind'}:{' '}
+                            {Math.abs(routePlan.headwind_kt)} kt
                           </Typography>
                         </Box>
                       </Grid>
@@ -174,7 +195,11 @@ const FlightPlannerPage: React.FC = () => {
               ) : null}
 
               <Box sx={{ mb: 2 }}>
-                <WeatherOverlayControls overlays={overlays} setOverlays={setOverlays} disabled={isLoading} />
+                <WeatherOverlayControls
+                  overlays={overlays}
+                  setOverlays={setOverlays}
+                  disabled={isLoading}
+                />
               </Box>
 
               <RouteMap plan={routePlan} overlays={overlays} />

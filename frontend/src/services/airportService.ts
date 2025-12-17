@@ -6,7 +6,7 @@ export const airportService = {
     const response = await apiClient.get<Airport[]>(`/airports/search?q=${query}`)
     return response.data
   },
-  
+
   getDetails: async (icao: string): Promise<Airport> => {
     const response = await apiClient.get<Airport>(`/airports/${icao}`)
     return response.data

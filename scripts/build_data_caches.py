@@ -4,7 +4,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 def _repo_root() -> Path:
@@ -98,7 +98,9 @@ def build_airspaces_us(*, airspaces_json: Path, out_json: Path) -> None:
     out_json.write_text(json.dumps(simplified, separators=(",", ":")), encoding="utf-8")
 
 
-def build_airspace_geojson(*, airspaces_us_json: Path, ch_geojson: Optional[Path], out_geojson: Path) -> None:
+def build_airspace_geojson(
+    *, airspaces_us_json: Path, ch_geojson: Optional[Path], out_geojson: Path
+) -> None:
     raw = json.loads(airspaces_us_json.read_text(encoding="utf-8"))
     if not isinstance(raw, list):
         raise ValueError("Expected a list in simplified airspaces JSON")
@@ -152,7 +154,9 @@ def main() -> None:
     args = parser.parse_args()
 
     build_airports_cache(airports_csv=Path(args.airports_csv), out_json=Path(args.out_airports))
-    build_airspaces_us(airspaces_json=Path(args.airspaces_json), out_json=Path(args.out_airspaces_us))
+    build_airspaces_us(
+        airspaces_json=Path(args.airspaces_json), out_json=Path(args.out_airspaces_us)
+    )
     build_airspace_geojson(
         airspaces_us_json=Path(args.out_airspaces_us),
         ch_geojson=Path(args.airspaces_ch_geojson),

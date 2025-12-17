@@ -1,10 +1,5 @@
 import React from 'react'
-import {
-  Box,
-  Chip,
-  Grid,
-  Typography,
-} from '@mui/material'
+import { Box, Chip, Grid, Typography } from '@mui/material'
 
 import type { AlternateAirport } from '../types'
 

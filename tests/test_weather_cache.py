@@ -4,7 +4,9 @@ from typing import Any, Dict
 
 
 class DummyResponse:
-    def __init__(self, *, status_code: int = 200, json_data: Dict[str, Any] | None = None, text: str = "") -> None:
+    def __init__(
+        self, *, status_code: int = 200, json_data: Dict[str, Any] | None = None, text: str = ""
+    ) -> None:
         self.status_code = status_code
         self._json = json_data or {}
         self.text = text
@@ -44,7 +46,11 @@ def test_open_meteo_current_is_cached(monkeypatch) -> None:
 
     def fake_get(*_args, **_kwargs):
         calls["n"] += 1
-        return DummyResponse(json_data={"current_weather": {"temperature": 70.0, "windspeed": 10.0, "winddirection": 180}})
+        return DummyResponse(
+            json_data={
+                "current_weather": {"temperature": 70.0, "windspeed": 10.0, "winddirection": 180}
+            }
+        )
 
     monkeypatch.setattr(open_meteo.httpx, "get", fake_get)
 
@@ -64,7 +70,13 @@ def test_openweathermap_current_is_cached(monkeypatch) -> None:
 
     def fake_get(*_args, **_kwargs):
         calls["n"] += 1
-        return DummyResponse(json_data={"weather": [{"description": "clear"}], "main": {"temp": 50}, "wind": {"speed": 5, "deg": 90}})
+        return DummyResponse(
+            json_data={
+                "weather": [{"description": "clear"}],
+                "main": {"temp": 50},
+                "wind": {"speed": 5, "deg": 90},
+            }
+        )
 
     monkeypatch.setattr(openweathermap.httpx, "get", fake_get)
 

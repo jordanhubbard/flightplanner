@@ -3,7 +3,7 @@ from __future__ import annotations
 import heapq
 import math
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 
 class AStarError(RuntimeError):
@@ -33,7 +33,9 @@ def _cell_key(lat: float, lon: float, cell_deg: float) -> Tuple[int, int]:
     return (int(math.floor(lat / cell_deg)), int(math.floor(lon / cell_deg)))
 
 
-def _build_spatial_index(nodes: Sequence[AirportNode], cell_deg: float) -> Dict[Tuple[int, int], List[int]]:
+def _build_spatial_index(
+    nodes: Sequence[AirportNode], cell_deg: float
+) -> Dict[Tuple[int, int], List[int]]:
     buckets: Dict[Tuple[int, int], List[int]] = {}
     for idx, n in enumerate(nodes):
         k = _cell_key(n.lat, n.lon, cell_deg)
@@ -54,7 +56,10 @@ def find_route(
         raise AStarError("max_leg_distance_nm must be > 0")
 
     # If the direct leg is feasible, prefer direct.
-    if haversine_nm((origin.lat, origin.lon), (destination.lat, destination.lon)) <= max_leg_distance_nm:
+    if (
+        haversine_nm((origin.lat, origin.lon), (destination.lat, destination.lon))
+        <= max_leg_distance_nm
+    ):
         return [origin.code, destination.code]
 
     # Include endpoints in the node list.
@@ -114,7 +119,9 @@ def find_route(
                 continue
             came_from[nxt] = current
             g_score[nxt] = tentative
-            h = haversine_nm((nodes[nxt].lat, nodes[nxt].lon), (nodes[dest_idx].lat, nodes[dest_idx].lon))
+            h = haversine_nm(
+                (nodes[nxt].lat, nodes[nxt].lon), (nodes[dest_idx].lat, nodes[dest_idx].lon)
+            )
             heapq.heappush(open_heap, (tentative + h, nxt))
 
     raise AStarError("No route found")

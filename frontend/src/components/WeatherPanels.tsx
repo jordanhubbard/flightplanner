@@ -1,14 +1,5 @@
 import React from 'react'
-import {
-  Alert,
-  Box,
-  Card,
-  CardContent,
-  Divider,
-  Grid,
-  Typography,
-  Chip,
-} from '@mui/material'
+import { Alert, Box, Card, CardContent, Divider, Grid, Typography, Chip } from '@mui/material'
 
 import { useForecast, useWeather } from '../hooks'
 
@@ -62,7 +53,10 @@ const AirportWeatherCard: React.FC<AirportWeatherCardProps> = ({ airport }) => {
                 <Typography variant="caption" color="text.secondary">
                   METAR
                 </Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                <Typography
+                  variant="body2"
+                  sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}
+                >
                   {weather.data.metar}
                 </Typography>
               </Box>
@@ -90,7 +84,8 @@ const AirportWeatherCard: React.FC<AirportWeatherCardProps> = ({ airport }) => {
                   {d.date}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  High {d.temp_max_f ?? '—'}°F / Low {d.temp_min_f ?? '—'}°F, Wind max {d.wind_speed_max_kt ?? '—'} kt
+                  High {d.temp_max_f ?? '—'}°F / Low {d.temp_min_f ?? '—'}°F, Wind max{' '}
+                  {d.wind_speed_max_kt ?? '—'} kt
                 </Typography>
               </Box>
             ))}
@@ -106,7 +101,10 @@ type Props = {
 }
 
 const WeatherPanels: React.FC<Props> = ({ airports }) => {
-  const unique = Array.from(new Set(airports.filter(Boolean).map((a) => a.toUpperCase()))).slice(0, 4)
+  const unique = Array.from(new Set(airports.filter(Boolean).map((a) => a.toUpperCase()))).slice(
+    0,
+    4,
+  )
 
   return (
     <Box>

@@ -75,8 +75,12 @@ def get_daily_forecast(*, lat: float, lon: float, days: int) -> List[Dict[str, A
                     "date": date,
                     "temp_max_f": tmax[i] if i < len(tmax) else None,
                     "temp_min_f": tmin[i] if i < len(tmin) else None,
-                    "precipitation_mm": precip[i] if isinstance(precip, list) and i < len(precip) else None,
-                    "wind_speed_max_kt": wind[i] if isinstance(wind, list) and i < len(wind) else None,
+                    "precipitation_mm": (
+                        precip[i] if isinstance(precip, list) and i < len(precip) else None
+                    ),
+                    "wind_speed_max_kt": (
+                        wind[i] if isinstance(wind, list) and i < len(wind) else None
+                    ),
                 }
             )
 
@@ -123,8 +127,12 @@ def get_hourly_forecast(*, lat: float, lon: float, hours: int = 24) -> List[Dict
                 {
                     "time": t,
                     "visibility_m": vis[i] if isinstance(vis, list) and i < len(vis) else None,
-                    "cloudcover_pct": clouds[i] if isinstance(clouds, list) and i < len(clouds) else None,
-                    "precipitation_mm": precip[i] if isinstance(precip, list) and i < len(precip) else None,
+                    "cloudcover_pct": (
+                        clouds[i] if isinstance(clouds, list) and i < len(clouds) else None
+                    ),
+                    "precipitation_mm": (
+                        precip[i] if isinstance(precip, list) and i < len(precip) else None
+                    ),
                     "wind_speed_kt": wind[i] if isinstance(wind, list) and i < len(wind) else None,
                 }
             )
@@ -134,5 +142,7 @@ def get_hourly_forecast(*, lat: float, lon: float, hours: int = 24) -> List[Dict
     return weather_cache.get_or_set(cache_key, ttl_s=1800, fn=_fetch, allow_stale_on_error=True)
 
 
-def sample_points_along_route(points: List[Tuple[float, float]], interval: int = 5) -> List[Tuple[float, float]]:
+def sample_points_along_route(
+    points: List[Tuple[float, float]], interval: int = 5
+) -> List[Tuple[float, float]]:
     return points[:: max(1, interval)]

@@ -59,8 +59,8 @@ const ElevationProfile: React.FC<Props> = ({ plan }) => {
   if (query.isError) {
     return (
       <Alert severity="info">
-        Elevation profile unavailable. Configure the backend terrain provider (e.g. OPENTOPOGRAPHY_API_KEY) to enable
-        elevation analysis.
+        Elevation profile unavailable. Configure the backend terrain provider (e.g.
+        OPENTOPOGRAPHY_API_KEY) to enable elevation analysis.
       </Alert>
     )
   }
@@ -76,7 +76,7 @@ const ElevationProfile: React.FC<Props> = ({ plan }) => {
       </Typography>
       <LineChart
         xAxis={[{ data: chartData.x, label: 'Distance (nm)' }]}
-        series={[{ data: chartData.y, label: 'Elevation (ft)', showMark: false }]} 
+        series={[{ data: chartData.y, label: 'Elevation (ft)', showMark: false }]}
         height={220}
         margin={{ left: 60, right: 20, top: 20, bottom: 40 }}
       />

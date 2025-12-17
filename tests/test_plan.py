@@ -155,7 +155,12 @@ def test_plan_route_mode_fuel_calculation(monkeypatch) -> None:
     monkeypatch.setattr(
         route_router,
         "get_airport_coordinates",
-        lambda code: {"icao": code.upper(), "iata": "", "latitude": 40.0 if code.upper() == "AAA" else 41.0, "longitude": -75.0},
+        lambda code: {
+            "icao": code.upper(),
+            "iata": "",
+            "latitude": 40.0 if code.upper() == "AAA" else 41.0,
+            "longitude": -75.0,
+        },
     )
 
     client = TestClient(app)
@@ -189,10 +194,19 @@ def test_plan_route_mode_apply_wind_adjusts_groundspeed(monkeypatch) -> None:
     monkeypatch.setattr(
         route_router,
         "get_airport_coordinates",
-        lambda code: {"icao": code.upper(), "iata": "", "latitude": 0.0, "longitude": 0.0 if code.upper() == "AAA" else 1.0},
+        lambda code: {
+            "icao": code.upper(),
+            "iata": "",
+            "latitude": 0.0,
+            "longitude": 0.0 if code.upper() == "AAA" else 1.0,
+        },
     )
 
-    monkeypatch.setattr(route_router.open_meteo, "get_current_weather", lambda lat, lon: {"windspeed": 20.0, "winddirection": 90})
+    monkeypatch.setattr(
+        route_router.open_meteo,
+        "get_current_weather",
+        lambda lat, lon: {"windspeed": 20.0, "winddirection": 90},
+    )
 
     client = TestClient(app)
     resp = client.post(

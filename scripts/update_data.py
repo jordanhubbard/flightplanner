@@ -21,7 +21,9 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def _download_bytes(url: str, *, headers: Optional[Dict[str, str]] = None, timeout_s: float = 60) -> bytes:
+def _download_bytes(
+    url: str, *, headers: Optional[Dict[str, str]] = None, timeout_s: float = 60
+) -> bytes:
     resp = httpx.get(url, headers=headers, timeout=timeout_s)
     resp.raise_for_status()
     return resp.content
@@ -76,7 +78,9 @@ def download_openaip_airports(*, out_json: Path, api_key: str) -> None:
     out_json.write_text(json.dumps(airports, separators=(",", ":")), encoding="utf-8")
 
 
-def rebuild_caches(*, airports_csv: Path, airspaces_json: Path, airspaces_ch_geojson: Path, out_dir: Path) -> None:
+def rebuild_caches(
+    *, airports_csv: Path, airspaces_json: Path, airspaces_ch_geojson: Path, out_dir: Path
+) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     build_airports_cache(airports_csv=airports_csv, out_json=out_dir / "airports_cache.json")
     build_airspaces_us(airspaces_json=airspaces_json, out_json=out_dir / "airspaces_us.json")
@@ -92,7 +96,9 @@ def main() -> None:
     src_dir = root / "sources" / "xctry-planner" / "backend"
     out_dir = root / "backend" / "data"
 
-    parser = argparse.ArgumentParser(description="Update source aviation datasets and rebuild local caches")
+    parser = argparse.ArgumentParser(
+        description="Update source aviation datasets and rebuild local caches"
+    )
     parser.add_argument("--openaip-api-key", default=os.environ.get("OPENAIP_API_KEY", ""))
     parser.add_argument("--skip-ourairports", action="store_true")
     parser.add_argument("--skip-openaip", action="store_true")
@@ -118,7 +124,9 @@ def main() -> None:
 
     if not args.skip_openaip:
         if not args.openaip_api_key:
-            raise SystemExit("OPENAIP_API_KEY is required to download OpenAIP datasets (or pass --skip-openaip).")
+            raise SystemExit(
+                "OPENAIP_API_KEY is required to download OpenAIP datasets (or pass --skip-openaip)."
+            )
 
         print(f"Downloading OpenAIP airspaces -> {airspaces_json}")
         download_openaip_airspaces(out_json=airspaces_json, api_key=args.openaip_api_key)

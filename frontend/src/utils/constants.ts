@@ -24,9 +24,9 @@ export const API_CONSTANTS = {
   timeout: 30000, // 30 seconds
   retryCount: 2,
   staleTime: {
-    short: 5 * 60 * 1000,    // 5 minutes
-    medium: 10 * 60 * 1000,  // 10 minutes
-    long: 30 * 60 * 1000,    // 30 minutes
+    short: 5 * 60 * 1000, // 5 minutes
+    medium: 10 * 60 * 1000, // 10 minutes
+    long: 30 * 60 * 1000, // 30 minutes
   },
 } as const
 

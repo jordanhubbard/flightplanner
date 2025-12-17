@@ -15,7 +15,9 @@ def bearing_deg(a: Tuple[float, float], b: Tuple[float, float]) -> float:
     return (brng + 360.0) % 360.0
 
 
-def wind_components_kt(*, track_deg: float, wind_from_deg: float, wind_speed_kt: float) -> tuple[float, float]:
+def wind_components_kt(
+    *, track_deg: float, wind_from_deg: float, wind_speed_kt: float
+) -> tuple[float, float]:
     rel = math.radians((wind_from_deg - track_deg + 360.0) % 360.0)
     headwind = wind_speed_kt * math.cos(rel)
     crosswind = wind_speed_kt * math.sin(rel)

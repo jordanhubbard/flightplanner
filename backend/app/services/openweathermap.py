@@ -32,7 +32,9 @@ def get_current_weather(*, lat: float, lon: float) -> Dict[str, Any]:
             "units": "imperial",
         }
 
-        resp = httpx.get("https://api.openweathermap.org/data/2.5/weather", params=params, timeout=20)
+        resp = httpx.get(
+            "https://api.openweathermap.org/data/2.5/weather", params=params, timeout=20
+        )
         resp.raise_for_status()
         return resp.json()
 

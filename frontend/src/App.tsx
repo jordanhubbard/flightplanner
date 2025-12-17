@@ -52,13 +52,13 @@ function App() {
             </Typography>
           </Toolbar>
         </AppBar>
-        
+
         <Navigation />
-        
-        <Container 
-          maxWidth="xl" 
-          sx={{ mt: isSmall ? 2 : 4, mb: isSmall ? 2 : 4, flex: 1 }} 
-          component="main" 
+
+        <Container
+          maxWidth="xl"
+          sx={{ mt: isSmall ? 2 : 4, mb: isSmall ? 2 : 4, flex: 1 }}
+          component="main"
           role="main"
         >
           <Suspense fallback={<LoadingState message="Loading page..." />}>

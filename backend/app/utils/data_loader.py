@@ -45,7 +45,9 @@ def load_json_cached(path: Path) -> Any:
 
 
 def load_airports(path: Optional[Path] = None) -> List[Dict[str, Any]]:
-    airports_path = path or Path(os.environ.get("AIRPORT_CACHE_FILE", str(_default_airports_path())))
+    airports_path = path or Path(
+        os.environ.get("AIRPORT_CACHE_FILE", str(_default_airports_path()))
+    )
     if not airports_path.exists():
         logger.warning("Airport cache file not found at %s", airports_path)
         return []
@@ -78,7 +80,9 @@ def build_airport_index(airports: Iterable[Mapping[str, Any]]) -> Dict[str, Dict
 
 
 def load_airspace(path: Optional[Path] = None) -> Dict[str, Any]:
-    airspace_path = path or Path(os.environ.get("AIRSPACE_CACHE_FILE", str(_default_airspace_path())))
+    airspace_path = path or Path(
+        os.environ.get("AIRSPACE_CACHE_FILE", str(_default_airspace_path()))
+    )
     if not airspace_path.exists():
         logger.warning("Airspace cache file not found at %s", airspace_path)
         return {}

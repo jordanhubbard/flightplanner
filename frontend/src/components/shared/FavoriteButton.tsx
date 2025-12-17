@@ -15,13 +15,16 @@ const FavoriteButtonComponent: React.FC<FavoriteButtonProps> = ({
   size = 'medium',
   label,
 }) => {
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent triggering parent click events
-    onToggle()
-  }, [onToggle])
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation() // Prevent triggering parent click events
+      onToggle()
+    },
+    [onToggle],
+  )
 
   const tooltipText = isFavorite ? 'Remove from favorites' : 'Add to favorites'
-  const ariaLabel = label 
+  const ariaLabel = label
     ? `${isFavorite ? 'Remove' : 'Add'} ${label} ${isFavorite ? 'from' : 'to'} favorites`
     : tooltipText
 

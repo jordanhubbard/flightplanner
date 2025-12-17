@@ -9,7 +9,12 @@ def test_weather_route_sampling(monkeypatch) -> None:
     monkeypatch.setattr(
         weather_router.open_meteo,
         "get_current_weather",
-        lambda **_kwargs: {"temperature": 70.0, "windspeed": 10.0, "winddirection": 180, "time": "2025-01-01T00:00"},
+        lambda **_kwargs: {
+            "temperature": 70.0,
+            "windspeed": 10.0,
+            "winddirection": 180,
+            "time": "2025-01-01T00:00",
+        },
     )
 
     client = TestClient(app)

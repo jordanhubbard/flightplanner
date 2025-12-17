@@ -53,10 +53,10 @@ export class ErrorBoundary extends Component<Props, State> {
               <AlertTitle>
                 <Typography variant="h5">Something went wrong</Typography>
               </AlertTitle>
-              
+
               <Typography variant="body1" sx={{ mb: 2 }}>
-                The application encountered an unexpected error. This has been logged
-                and we'll look into it.
+                The application encountered an unexpected error. This has been logged and we'll look
+                into it.
               </Typography>
 
               {this.state.error && (
@@ -81,17 +81,10 @@ export class ErrorBoundary extends Component<Props, State> {
               )}
 
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<Refresh />}
-                  onClick={this.handleReset}
-                >
+                <Button variant="contained" startIcon={<Refresh />} onClick={this.handleReset}>
                   Try Again
                 </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => window.location.href = '/'}
-                >
+                <Button variant="outlined" onClick={() => (window.location.href = '/')}>
                   Go to Home
                 </Button>
               </Box>

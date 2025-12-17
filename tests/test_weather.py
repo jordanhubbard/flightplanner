@@ -7,7 +7,11 @@ def test_weather_missing_api_key_returns_503(monkeypatch) -> None:
     import app.routers.weather as weather_router
 
     monkeypatch.delenv("OPENWEATHERMAP_API_KEY", raising=False)
-    monkeypatch.setattr(weather_router, "get_airport_coordinates", lambda _code: {"latitude": 40.0, "longitude": -75.0})
+    monkeypatch.setattr(
+        weather_router,
+        "get_airport_coordinates",
+        lambda _code: {"latitude": 40.0, "longitude": -75.0},
+    )
 
     client = TestClient(app)
     resp = client.get("/api/weather/AAA")
@@ -19,7 +23,11 @@ def test_weather_ok(monkeypatch) -> None:
     import app.routers.weather as weather_router
 
     monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
-    monkeypatch.setattr(weather_router, "get_airport_coordinates", lambda _code: {"latitude": 40.0, "longitude": -75.0})
+    monkeypatch.setattr(
+        weather_router,
+        "get_airport_coordinates",
+        lambda _code: {"latitude": 40.0, "longitude": -75.0},
+    )
     monkeypatch.setattr(
         weather_router.openweathermap,
         "get_current_weather",
@@ -48,7 +56,11 @@ def test_weather_metar_overrides_fields(monkeypatch) -> None:
     import app.routers.weather as weather_router
 
     monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
-    monkeypatch.setattr(weather_router, "get_airport_coordinates", lambda _code: {"latitude": 40.0, "longitude": -75.0})
+    monkeypatch.setattr(
+        weather_router,
+        "get_airport_coordinates",
+        lambda _code: {"latitude": 40.0, "longitude": -75.0},
+    )
     monkeypatch.setattr(
         weather_router.openweathermap,
         "get_current_weather",
@@ -82,7 +94,11 @@ def test_weather_metar_overrides_fields(monkeypatch) -> None:
 def test_weather_recommendations_ok(monkeypatch) -> None:
     import app.routers.weather as weather_router
 
-    monkeypatch.setattr(weather_router, "get_airport_coordinates", lambda _code: {"latitude": 40.0, "longitude": -75.0})
+    monkeypatch.setattr(
+        weather_router,
+        "get_airport_coordinates",
+        lambda _code: {"latitude": 40.0, "longitude": -75.0},
+    )
     monkeypatch.setattr(
         weather_router.metar,
         "fetch_metar_raw",
@@ -92,10 +108,34 @@ def test_weather_recommendations_ok(monkeypatch) -> None:
         weather_router.open_meteo,
         "get_hourly_forecast",
         lambda **_kwargs: [
-            {"time": "2025-01-01T00:00", "visibility_m": 16000, "cloudcover_pct": 10, "precipitation_mm": 0, "wind_speed_kt": 5},
-            {"time": "2025-01-01T01:00", "visibility_m": 16000, "cloudcover_pct": 10, "precipitation_mm": 0, "wind_speed_kt": 5},
-            {"time": "2025-01-01T02:00", "visibility_m": 16000, "cloudcover_pct": 10, "precipitation_mm": 0, "wind_speed_kt": 5},
-            {"time": "2025-01-01T03:00", "visibility_m": 16000, "cloudcover_pct": 80, "precipitation_mm": 2, "wind_speed_kt": 25},
+            {
+                "time": "2025-01-01T00:00",
+                "visibility_m": 16000,
+                "cloudcover_pct": 10,
+                "precipitation_mm": 0,
+                "wind_speed_kt": 5,
+            },
+            {
+                "time": "2025-01-01T01:00",
+                "visibility_m": 16000,
+                "cloudcover_pct": 10,
+                "precipitation_mm": 0,
+                "wind_speed_kt": 5,
+            },
+            {
+                "time": "2025-01-01T02:00",
+                "visibility_m": 16000,
+                "cloudcover_pct": 10,
+                "precipitation_mm": 0,
+                "wind_speed_kt": 5,
+            },
+            {
+                "time": "2025-01-01T03:00",
+                "visibility_m": 16000,
+                "cloudcover_pct": 80,
+                "precipitation_mm": 2,
+                "wind_speed_kt": 25,
+            },
         ],
     )
 

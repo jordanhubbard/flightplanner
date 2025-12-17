@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generic, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Generic, Optional, TypeVar
 
 
 T = TypeVar("T")
@@ -44,7 +44,9 @@ class TTLCache:
         with self._lock:
             self._cache[key] = _Entry(value=value, stored_at=time.time(), ttl_s=ttl_s)
 
-    def get_or_set(self, key: str, *, ttl_s: float, fn: Callable[[], T], allow_stale_on_error: bool = False) -> T:
+    def get_or_set(
+        self, key: str, *, ttl_s: float, fn: Callable[[], T], allow_stale_on_error: bool = False
+    ) -> T:
         cached = self.get(key)
         if cached is not None:
             return cached

@@ -29,3 +29,9 @@ shapely
 pytest
 pytest-asyncio
 pytest-cov
+
+# Code quality
+black
+flake8
+mypy
+pre-commit

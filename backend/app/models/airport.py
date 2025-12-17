@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.utils.data_loader import load_airports
 
+
 def load_airport_cache() -> List[Dict[str, Any]]:
     return load_airports()
 
@@ -121,7 +122,11 @@ def search_airports_advanced(
             "type": airport.get("type") or "",
         }
 
-        key = normalized["icao"] or normalized["iata"] or f"{normalized['latitude']},{normalized['longitude']}"
+        key = (
+            normalized["icao"]
+            or normalized["iata"]
+            or f"{normalized['latitude']},{normalized['longitude']}"
+        )
         if key in seen:
             continue
         seen.add(key)

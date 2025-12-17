@@ -55,7 +55,11 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
 
     route_codes = [req.origin.upper(), req.destination.upper()]
     if req.plan_fuel_stops or req.aircraft_range_nm is not None:
-        max_leg = float(req.aircraft_range_nm) if req.aircraft_range_nm is not None else float(req.max_leg_distance)
+        max_leg = (
+            float(req.aircraft_range_nm)
+            if req.aircraft_range_nm is not None
+            else float(req.max_leg_distance)
+        )
         max_leg = min(max_leg, float(req.max_leg_distance))
 
         candidates = []
@@ -77,8 +81,12 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
                 per_leg_penalty = 25.0
 
             route_codes = a_star.find_route(
-                origin=a_star.AirportNode(code=req.origin.upper(), lat=float(o_lat), lon=float(o_lon)),
-                destination=a_star.AirportNode(code=req.destination.upper(), lat=float(d_lat), lon=float(d_lon)),
+                origin=a_star.AirportNode(
+                    code=req.origin.upper(), lat=float(o_lat), lon=float(o_lon)
+                ),
+                destination=a_star.AirportNode(
+                    code=req.destination.upper(), lat=float(d_lat), lon=float(d_lon)
+                ),
                 candidates=candidates,
                 max_leg_distance_nm=max_leg,
                 per_leg_penalty_nm=per_leg_penalty,
@@ -227,9 +235,9 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         fuel_burn_gph=fuel_burn,
         reserve_minutes=reserve_minutes,
         fuel_required_gal=round(fuel_required, 2) if fuel_required is not None else None,
-        fuel_required_with_reserve_gal=round(fuel_required_with_reserve, 2)
-        if fuel_required_with_reserve is not None
-        else None,
+        fuel_required_with_reserve_gal=(
+            round(fuel_required_with_reserve, 2) if fuel_required_with_reserve is not None else None
+        ),
         wind_speed_kt=wind_speed_kt,
         wind_direction_deg=wind_direction_deg,
         headwind_kt=headwind_kt,

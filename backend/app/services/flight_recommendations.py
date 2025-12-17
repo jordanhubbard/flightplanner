@@ -50,7 +50,9 @@ def recommendation_for_category(cat: FlightCategory) -> str:
     return "Insufficient data to assess VFR/IFR suitability."
 
 
-def warnings_for_conditions(*, visibility_sm: Optional[float], ceiling_ft: Optional[float], wind_speed_kt: Optional[float]) -> List[str]:
+def warnings_for_conditions(
+    *, visibility_sm: Optional[float], ceiling_ft: Optional[float], wind_speed_kt: Optional[float]
+) -> List[str]:
     out: List[str] = []
     if visibility_sm is not None and visibility_sm < 5:
         out.append(f"Reduced visibility ({visibility_sm:.1f} SM).")
@@ -88,7 +90,9 @@ def estimate_ceiling_ft_from_cloudcover(cloud_pct: Optional[float]) -> Optional[
     return 10000.0
 
 
-def score_hour(*, cat: FlightCategory, precipitation_mm: Optional[float], wind_speed_kt: Optional[float]) -> float:
+def score_hour(
+    *, cat: FlightCategory, precipitation_mm: Optional[float], wind_speed_kt: Optional[float]
+) -> float:
     cat_weight = {"VFR": 4.0, "MVFR": 3.0, "IFR": 2.0, "LIFR": 1.0, "UNKNOWN": 0.5}[cat]
     precip = max(0.0, float(precipitation_mm)) if precipitation_mm is not None else 0.0
     wind = max(0.0, float(wind_speed_kt)) if wind_speed_kt is not None else 0.0

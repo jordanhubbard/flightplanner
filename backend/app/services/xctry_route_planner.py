@@ -79,7 +79,9 @@ def load_airspaces_gdf():
     return gpd.GeoDataFrame(features, crs="EPSG:4326")
 
 
-def avoid_airspaces(route_points: List[Tuple[float, float]], buffer_nm: float = 5.0) -> List[Tuple[float, float]]:
+def avoid_airspaces(
+    route_points: List[Tuple[float, float]], buffer_nm: float = 5.0
+) -> List[Tuple[float, float]]:
     from shapely.geometry import LineString
 
     airspaces_gdf = load_airspaces_gdf()
@@ -96,7 +98,10 @@ def avoid_airspaces(route_points: List[Tuple[float, float]], buffer_nm: float = 
 
         for i in range(len(route_points) - 1):
             seg = LineString(
-                [(route_points[i][1], route_points[i][0]), (route_points[i + 1][1], route_points[i + 1][0])]
+                [
+                    (route_points[i][1], route_points[i][0]),
+                    (route_points[i + 1][1], route_points[i + 1][0]),
+                ]
             )
             intersecting = airspaces_gdf[airspaces_gdf.intersects(seg)]
             if not intersecting.empty:
@@ -120,7 +125,9 @@ def avoid_airspaces(route_points: List[Tuple[float, float]], buffer_nm: float = 
     return route_points
 
 
-def _build_segments(points: List[Tuple[float, float]], cruising_altitude_ft: int) -> List[RouteSegment]:
+def _build_segments(
+    points: List[Tuple[float, float]], cruising_altitude_ft: int
+) -> List[RouteSegment]:
     segments: List[RouteSegment] = []
     for i in range(len(points) - 1):
         segments.append(
@@ -151,7 +158,9 @@ def plan_route(
     avoid_airspaces_enabled: bool = False,
     airspace_buffer_nm: float = 5.0,
 ) -> Tuple[List[Tuple[float, float]], List[RouteSegment]]:
-    points, _ = plan_direct_route(origin=origin, destination=destination, cruising_altitude_ft=cruising_altitude_ft)
+    points, _ = plan_direct_route(
+        origin=origin, destination=destination, cruising_altitude_ft=cruising_altitude_ft
+    )
 
     if avoid_airspaces_enabled:
         points = avoid_airspaces(points, buffer_nm=airspace_buffer_nm)

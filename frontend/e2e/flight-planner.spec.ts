@@ -36,9 +36,27 @@ test('plan a route and a local flight', async ({ page }) => {
         airport: airport.toUpperCase(),
         days: 3,
         daily: [
-          { date: '2025-01-01', temp_max_f: 70, temp_min_f: 55, precipitation_mm: 0, wind_speed_max_kt: 10 },
-          { date: '2025-01-02', temp_max_f: 68, temp_min_f: 54, precipitation_mm: 0, wind_speed_max_kt: 12 },
-          { date: '2025-01-03', temp_max_f: 65, temp_min_f: 52, precipitation_mm: 0, wind_speed_max_kt: 15 },
+          {
+            date: '2025-01-01',
+            temp_max_f: 70,
+            temp_min_f: 55,
+            precipitation_mm: 0,
+            wind_speed_max_kt: 10,
+          },
+          {
+            date: '2025-01-02',
+            temp_max_f: 68,
+            temp_min_f: 54,
+            precipitation_mm: 0,
+            wind_speed_max_kt: 12,
+          },
+          {
+            date: '2025-01-03',
+            temp_max_f: 65,
+            temp_min_f: 52,
+            precipitation_mm: 0,
+            wind_speed_max_kt: 15,
+          },
         ],
       }),
     })
@@ -72,16 +90,20 @@ test('plan a route and a local flight', async ({ page }) => {
 
   const localPlanResponsePromise = page.waitForResponse(
     (resp) => resp.url().includes('/api/plan') && resp.request().method() === 'POST',
-    { timeout: 60_000 }
+    { timeout: 60_000 },
   )
 
   await page.getByRole('button', { name: 'Plan Local Flight' }).click()
 
   const localPlanResponse = await localPlanResponsePromise
-  const localPlanRequestBody = localPlanResponse.request().postDataJSON() as { mode?: string } | null
+  const localPlanRequestBody = localPlanResponse.request().postDataJSON() as {
+    mode?: string
+  } | null
   expect(localPlanRequestBody?.mode).toBe('local')
   expect(localPlanResponse.status()).toBe(200)
 
-  await expect(page.getByRole('heading', { name: 'Local Results' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: 'Local Results' })).toBeVisible({
+    timeout: 15_000,
+  })
   await expect(page.getByText(/Center:\s+KSFO/)).toBeVisible()
 })
