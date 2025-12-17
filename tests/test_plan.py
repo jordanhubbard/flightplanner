@@ -41,7 +41,62 @@ def test_plan_route_mode_ok(monkeypatch) -> None:
     assert "segments" in body
 
 
-def test_plan_local_mode_not_implemented() -> None:
+def test_plan_local_mode_ok(monkeypatch) -> None:
+    import app.routers.local as local_router
+
+    monkeypatch.setattr(
+        local_router,
+        "get_airport_coordinates",
+        lambda code: {
+            "icao": code.upper(),
+            "iata": "",
+            "name": "Center",
+            "city": "City",
+            "country": "US",
+            "latitude": 40.0,
+            "longitude": -75.0,
+            "elevation": 0,
+            "type": "small_airport",
+        },
+    )
+
+    monkeypatch.setattr(
+        local_router,
+        "load_airport_cache",
+        lambda: [
+            {
+                "icao": "AAA",
+                "latitude": 40.0,
+                "longitude": -75.0,
+                "name": "Center",
+                "city": "City",
+                "country": "US",
+            },
+            {
+                "icao": "BBB",
+                "latitude": 40.1,
+                "longitude": -75.0,
+                "name": "Nearby",
+                "city": "Town",
+                "country": "US",
+            },
+            {
+                "icao": "CCC",
+                "latitude": 42.0,
+                "longitude": -75.0,
+                "name": "Far",
+                "city": "Far Town",
+                "country": "US",
+            },
+        ],
+    )
+
     client = TestClient(app)
-    resp = client.post("/api/plan", json={"mode": "local", "airport": "AAA"})
-    assert resp.status_code == 501
+    resp = client.post("/api/plan", json={"mode": "local", "airport": "AAA", "radius_nm": 25})
+    assert resp.status_code == 200
+
+    body = resp.json()
+    assert body["airport"] == "AAA"
+    assert body["center"]["icao"] == "AAA"
+    assert len(body["nearby_airports"]) == 1
+    assert body["nearby_airports"][0]["icao"] == "BBB"
