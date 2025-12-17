@@ -8,6 +8,7 @@ import {
   ResultsSection 
 } from '../components/shared'
 import FlightPlanningForm from '../components/FlightPlanningForm'
+import RouteMap from '../components/RouteMap'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
 import type { FlightPlan, FlightPlanRequest, LocalPlanRequest, RoutePlanRequest } from '../types'
@@ -92,6 +93,8 @@ const FlightPlannerPage: React.FC = () => {
                   </Grid>
                 </CardContent>
               </Card>
+
+              <RouteMap plan={routePlan} />
             </ResultsSection>
           ) : (
             <EmptyState
