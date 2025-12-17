@@ -7,6 +7,27 @@ export interface WeatherData {
   visibility: number
   ceiling: number
   metar: string
+
+  flight_category?: 'VFR' | 'MVFR' | 'IFR' | 'LIFR' | 'UNKNOWN' | null
+  recommendation?: string | null
+  warnings?: string[]
+}
+
+export type FlightCategory = 'VFR' | 'MVFR' | 'IFR' | 'LIFR' | 'UNKNOWN'
+
+export interface DepartureWindow {
+  start_time: string
+  end_time: string
+  score: number
+  flight_category: FlightCategory
+}
+
+export interface WeatherRecommendationsResponse {
+  airport: string
+  current_category: FlightCategory
+  recommendation: string
+  warnings: string[]
+  best_departure_windows: DepartureWindow[]
 }
 
 export interface DailyForecast {

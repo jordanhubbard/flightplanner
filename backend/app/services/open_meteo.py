@@ -85,5 +85,54 @@ def get_daily_forecast(*, lat: float, lon: float, days: int) -> List[Dict[str, A
     return weather_cache.get_or_set(cache_key, ttl_s=1800, fn=_fetch, allow_stale_on_error=True)
 
 
+def get_hourly_forecast(*, lat: float, lon: float, hours: int = 24) -> List[Dict[str, Any]]:
+    if hours < 1 or hours > 168:
+        raise OpenMeteoError("hours must be between 1 and 168")
+
+    cache_key = f"om:hourly:{round(lat, 3)}:{round(lon, 3)}:{hours}"
+
+    def _fetch() -> List[Dict[str, Any]]:
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "hourly": "visibility,cloudcover,precipitation,windspeed_10m",
+            "forecast_days": 2,
+            "timezone": "UTC",
+            "windspeed_unit": "kn",
+        }
+
+        resp = httpx.get("https://api.open-meteo.com/v1/forecast", params=params, timeout=20)
+        resp.raise_for_status()
+        payload = resp.json()
+        hourly = payload.get("hourly")
+        if not isinstance(hourly, dict):
+            raise OpenMeteoError("Unexpected Open-Meteo hourly schema")
+
+        times = hourly.get("time")
+        vis = hourly.get("visibility")
+        clouds = hourly.get("cloudcover")
+        precip = hourly.get("precipitation")
+        wind = hourly.get("windspeed_10m")
+
+        if not isinstance(times, list):
+            raise OpenMeteoError("Unexpected Open-Meteo hourly schema")
+
+        out: List[Dict[str, Any]] = []
+        for i, t in enumerate(times[:hours]):
+            out.append(
+                {
+                    "time": t,
+                    "visibility_m": vis[i] if isinstance(vis, list) and i < len(vis) else None,
+                    "cloudcover_pct": clouds[i] if isinstance(clouds, list) and i < len(clouds) else None,
+                    "precipitation_mm": precip[i] if isinstance(precip, list) and i < len(precip) else None,
+                    "wind_speed_kt": wind[i] if isinstance(wind, list) and i < len(wind) else None,
+                }
+            )
+
+        return out
+
+    return weather_cache.get_or_set(cache_key, ttl_s=1800, fn=_fetch, allow_stale_on_error=True)
+
+
 def sample_points_along_route(points: List[Tuple[float, float]], interval: int = 5) -> List[Tuple[float, float]]:
     return points[:: max(1, interval)]

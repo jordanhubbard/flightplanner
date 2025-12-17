@@ -3,7 +3,17 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.models.airport import get_airport_coordinates
-from app.schemas.weather import ForecastResponse, RouteWeatherPoint, RouteWeatherRequest, RouteWeatherResponse, WeatherData, DailyForecast
+from app.schemas.weather import (
+    DailyForecast,
+    DepartureWindow,
+    ForecastResponse,
+    RouteWeatherPoint,
+    RouteWeatherRequest,
+    RouteWeatherResponse,
+    WeatherData,
+    WeatherRecommendationsResponse,
+)
+from app.services import flight_recommendations
 from app.services import metar
 from app.services import open_meteo
 from app.services import openweathermap
@@ -112,8 +122,64 @@ def weather_for_airport(code: str) -> dict:
             if parsed.get("ceiling_ft") is not None:
                 data["ceiling"] = parsed["ceiling_ft"]
 
+        cat = flight_recommendations.flight_category(
+            visibility_sm=float(data.get("visibility")) if data.get("visibility") is not None else None,
+            ceiling_ft=float(data.get("ceiling")) if data.get("ceiling") is not None else None,
+        )
+        data["flight_category"] = cat
+        data["recommendation"] = flight_recommendations.recommendation_for_category(cat)
+        data["warnings"] = flight_recommendations.warnings_for_conditions(
+            visibility_sm=float(data.get("visibility")) if data.get("visibility") is not None else None,
+            ceiling_ft=float(data.get("ceiling")) if data.get("ceiling") is not None else None,
+            wind_speed_kt=float(data.get("wind_speed")) if data.get("wind_speed") is not None else None,
+        )
+
         return data
     except openweathermap.OpenWeatherMapError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception:
         raise HTTPException(status_code=503, detail="Weather service error")
+
+
+@router.get(
+    "/weather/{code}/recommendations",
+    response_model=WeatherRecommendationsResponse,
+    summary="Flight recommendations",
+    description="VFR/IFR suitability (best-effort) and suggested departure windows using Open-Meteo hourly data.",
+)
+def weather_recommendations(code: str) -> WeatherRecommendationsResponse:
+    coords = get_airport_coordinates(code)
+    if not coords:
+        raise HTTPException(status_code=404, detail=f"Unknown airport '{code}'")
+
+    raw = metar.fetch_metar_raw(code.upper())
+    parsed = metar.parse_metar(raw) if raw else {}
+
+    vis_sm = parsed.get("visibility_sm")
+    ceil_ft = parsed.get("ceiling_ft")
+    wind_kt = parsed.get("wind_speed_kt")
+
+    cat = flight_recommendations.flight_category(
+        visibility_sm=float(vis_sm) if isinstance(vis_sm, (int, float)) else None,
+        ceiling_ft=float(ceil_ft) if isinstance(ceil_ft, (int, float)) else None,
+    )
+
+    warnings = flight_recommendations.warnings_for_conditions(
+        visibility_sm=float(vis_sm) if isinstance(vis_sm, (int, float)) else None,
+        ceiling_ft=float(ceil_ft) if isinstance(ceil_ft, (int, float)) else None,
+        wind_speed_kt=float(wind_kt) if isinstance(wind_kt, (int, float)) else None,
+    )
+
+    try:
+        hourly = open_meteo.get_hourly_forecast(lat=float(coords["latitude"]), lon=float(coords["longitude"]), hours=24)
+        windows = flight_recommendations.best_departure_windows(hourly)
+    except Exception:
+        windows = []
+
+    return WeatherRecommendationsResponse(
+        airport=code.upper(),
+        current_category=cat,
+        recommendation=flight_recommendations.recommendation_for_category(cat),
+        warnings=warnings,
+        best_departure_windows=[DepartureWindow(**w) for w in windows],
+    )

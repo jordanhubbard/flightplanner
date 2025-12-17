@@ -11,6 +11,9 @@ export type {
 } from './flight.types'
 export type {
   WeatherData,
+  FlightCategory,
+  DepartureWindow,
+  WeatherRecommendationsResponse,
   DailyForecast,
   ForecastResponse,
   RouteWeatherPoint,

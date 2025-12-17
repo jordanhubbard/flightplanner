@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import { Grid, TextField, Card, CardContent, Box, InputAdornment, Typography } from '@mui/material'
+import { Grid, TextField, Card, CardContent, Box, InputAdornment, Typography, Alert, Divider } from '@mui/material'
 import { Cloud, Thermostat, Air, Visibility } from '@mui/icons-material'
 import toast from 'react-hot-toast'
 import { 
@@ -11,7 +11,7 @@ import {
   SearchHistoryDropdown,
   FavoriteButton,
 } from '../components/shared'
-import { useApiMutation, useSearchHistory, useFavorites } from '../hooks'
+import { useApiMutation, useSearchHistory, useFavorites, useWeatherRecommendations } from '../hooks'
 import { weatherService } from '../services'
 import { validateAirportCode } from '../utils'
 import type { WeatherData } from '../types'
@@ -79,6 +79,7 @@ const WeatherPage: React.FC = () => {
 
   const weatherData = weatherMutation.data
   const currentAirport = weatherData?.airport || airport.toUpperCase()
+  const recommendations = useWeatherRecommendations(weatherData?.airport || '')
 
   return (
     <Box>
@@ -141,6 +142,22 @@ const WeatherPage: React.FC = () => {
             <ResultsSection title={`Current Weather - ${weatherData.airport}`}>
               <Card sx={{ mb: 2 }}>
                 <CardContent>
+                  {weatherData.flight_category ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2">Flight category: {weatherData.flight_category}</Typography>
+                      {weatherData.recommendation ? (
+                        <Typography variant="body2" color="text.secondary">
+                          {weatherData.recommendation}
+                        </Typography>
+                      ) : null}
+                      {weatherData.warnings && weatherData.warnings.length > 0 ? (
+                        <Alert severity={weatherData.flight_category === 'VFR' ? 'info' : 'warning'} sx={{ mt: 1 }}>
+                          {weatherData.warnings.join(' ')}
+                        </Alert>
+                      ) : null}
+                    </Box>
+                  ) : null}
+
                   <Typography variant="h6" gutterBottom>
                     {weatherData.conditions}
                   </Typography>
@@ -193,6 +210,38 @@ const WeatherPage: React.FC = () => {
                       </Typography>
                     </Box>
                   )}
+
+                  <Divider sx={{ my: 2 }} />
+
+                  <Typography variant="subtitle2" gutterBottom>
+                    Suggested departure windows (UTC)
+                  </Typography>
+                  {recommendations.isLoading ? (
+                    <Typography variant="body2">Loading recommendations…</Typography>
+                  ) : recommendations.isError ? (
+                    <Typography variant="body2" color="text.secondary">
+                      Recommendations unavailable.
+                    </Typography>
+                  ) : recommendations.data ? (
+                    <Box>
+                      {recommendations.data.best_departure_windows.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary">
+                          No forecast windows available.
+                        </Typography>
+                      ) : (
+                        recommendations.data.best_departure_windows.map((w) => (
+                          <Box key={`${w.start_time}-${w.end_time}`} sx={{ mb: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {w.start_time} → {w.end_time} ({w.flight_category})
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Score: {w.score}
+                            </Typography>
+                          </Box>
+                        ))
+                      )}
+                    </Box>
+                  ) : null}
                 </CardContent>
               </Card>
             </ResultsSection>

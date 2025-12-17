@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient'
-import type { ForecastResponse, RouteWeatherResponse, WeatherData } from '../types'
+import type { ForecastResponse, RouteWeatherResponse, WeatherData, WeatherRecommendationsResponse } from '../types'
 
 export const weatherService = {
   getWeather: async (airport: string): Promise<WeatherData> => {
@@ -19,6 +19,11 @@ export const weatherService = {
       points,
       max_points: maxPoints,
     })
+    return response.data
+  },
+
+  getRecommendations: async (airport: string): Promise<WeatherRecommendationsResponse> => {
+    const response = await apiClient.get<WeatherRecommendationsResponse>(`/weather/${airport}/recommendations`)
     return response.data
   },
 }

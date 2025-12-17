@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -14,6 +14,9 @@ class WeatherData(BaseModel):
     visibility: float
     ceiling: float
     metar: str
+    flight_category: Optional[Literal["VFR", "MVFR", "IFR", "LIFR", "UNKNOWN"]] = None
+    recommendation: Optional[str] = None
+    warnings: List[str] = Field(default_factory=list)
 
 
 class DailyForecast(BaseModel):
@@ -46,3 +49,18 @@ class RouteWeatherPoint(BaseModel):
 
 class RouteWeatherResponse(BaseModel):
     points: List[RouteWeatherPoint]
+
+
+class DepartureWindow(BaseModel):
+    start_time: str
+    end_time: str
+    score: float
+    flight_category: Literal["VFR", "MVFR", "IFR", "LIFR", "UNKNOWN"]
+
+
+class WeatherRecommendationsResponse(BaseModel):
+    airport: str
+    current_category: Literal["VFR", "MVFR", "IFR", "LIFR", "UNKNOWN"]
+    recommendation: str
+    warnings: List[str]
+    best_departure_windows: List[DepartureWindow]

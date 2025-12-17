@@ -7,6 +7,7 @@ import {
   Divider,
   Grid,
   Typography,
+  Chip,
 } from '@mui/material'
 
 import { useForecast, useWeather } from '../hooks'
@@ -32,6 +33,22 @@ const AirportWeatherCard: React.FC<AirportWeatherCardProps> = ({ airport }) => {
           <Alert severity="warning">Unable to load current weather.</Alert>
         ) : weather.data ? (
           <Box>
+            {weather.data.flight_category ? (
+              <Box sx={{ mb: 1 }}>
+                <Chip
+                  size="small"
+                  label={weather.data.flight_category}
+                  color={
+                    weather.data.flight_category === 'VFR'
+                      ? 'success'
+                      : weather.data.flight_category === 'MVFR'
+                        ? 'warning'
+                        : 'error'
+                  }
+                  variant="outlined"
+                />
+              </Box>
+            ) : null}
             <Typography variant="body2">{weather.data.conditions}</Typography>
             <Typography variant="body2">Temp: {weather.data.temperature}°F</Typography>
             <Typography variant="body2">
