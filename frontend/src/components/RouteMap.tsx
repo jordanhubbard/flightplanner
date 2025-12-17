@@ -5,9 +5,18 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 import type { FlightPlan } from '../types'
+import type { WeatherOverlayKey, WeatherOverlays } from './WeatherOverlayControls'
 
 type Props = {
   plan: FlightPlan
+  overlays?: WeatherOverlays
+}
+
+const OPENWEATHER_LAYERS: Record<WeatherOverlayKey, string> = {
+  clouds: 'clouds_new',
+  wind: 'wind_new',
+  precipitation: 'precipitation_new',
+  temperature: 'temp_new',
 }
 
 const FitBounds: React.FC<{ points: Array<[number, number]> }> = ({ points }) => {
@@ -22,7 +31,7 @@ const FitBounds: React.FC<{ points: Array<[number, number]> }> = ({ points }) =>
   return null
 }
 
-const RouteMap: React.FC<Props> = ({ plan }) => {
+const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
   const points = useMemo(() => {
     if (!plan.segments || plan.segments.length === 0) {
       return [plan.origin_coords, plan.destination_coords]
@@ -34,6 +43,7 @@ const RouteMap: React.FC<Props> = ({ plan }) => {
   }, [plan])
 
   const center = points[0] || plan.origin_coords
+  const owmKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY
 
   return (
     <Box
@@ -55,6 +65,20 @@ const RouteMap: React.FC<Props> = ({ plan }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
+        {owmKey &&
+          overlays &&
+          (Object.keys(overlays) as WeatherOverlayKey[]).map((key) => {
+            if (!overlays[key].enabled) return null
+            const layer = OPENWEATHER_LAYERS[key]
+            return (
+              <TileLayer
+                key={key}
+                url={`https://tile.openweathermap.org/map/${layer}/{z}/{x}/{y}.png?appid=${owmKey}`}
+                opacity={overlays[key].opacity}
+              />
+            )
+          })}
 
         <FitBounds points={points} />
 

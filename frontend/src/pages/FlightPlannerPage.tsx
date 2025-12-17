@@ -9,12 +9,19 @@ import {
 } from '../components/shared'
 import FlightPlanningForm from '../components/FlightPlanningForm'
 import RouteMap from '../components/RouteMap'
+import WeatherOverlayControls, { type WeatherOverlays } from '../components/WeatherOverlayControls'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
 import type { FlightPlan, FlightPlanRequest, LocalPlanRequest, RoutePlanRequest } from '../types'
 
 const FlightPlannerPage: React.FC = () => {
   const [lastMode, setLastMode] = useState<'local' | 'route'>('route')
+  const [overlays, setOverlays] = useState<WeatherOverlays>({
+    clouds: { enabled: false, opacity: 0.6 },
+    wind: { enabled: false, opacity: 0.7 },
+    precipitation: { enabled: false, opacity: 0.7 },
+    temperature: { enabled: false, opacity: 0.6 },
+  })
 
   const routePlanMutation = useApiMutation<FlightPlan, RoutePlanRequest>((data) => flightPlannerService.plan(data), {
     successMessage: 'Route planned successfully!',
@@ -94,7 +101,11 @@ const FlightPlannerPage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <RouteMap plan={routePlan} />
+              <Box sx={{ mb: 2 }}>
+                <WeatherOverlayControls overlays={overlays} setOverlays={setOverlays} disabled={isLoading} />
+              </Box>
+
+              <RouteMap plan={routePlan} overlays={overlays} />
             </ResultsSection>
           ) : (
             <EmptyState
