@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import Settings
-from app.routers import airspace, airports, health, local, route, terrain, weather
+from app.routers import airspace, airports, health, local, plan, route, terrain, weather
 
 
 def create_app(settings: Settings) -> FastAPI:
@@ -23,6 +23,7 @@ def create_app(settings: Settings) -> FastAPI:
     )
 
     app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
+    app.include_router(plan.router, prefix=settings.api_prefix, tags=["plan"])
     app.include_router(airports.router, prefix=settings.api_prefix, tags=["airports"])
     app.include_router(weather.router, prefix=settings.api_prefix, tags=["weather"])
     app.include_router(route.router, prefix=settings.api_prefix, tags=["route"])
