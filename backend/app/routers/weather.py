@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.airport import get_airport_coordinates
 from app.services import metar
@@ -35,6 +35,53 @@ class ForecastResponse(BaseModel):
     airport: str
     days: int
     daily: list[DailyForecast]
+
+
+class RouteWeatherRequest(BaseModel):
+    points: list[tuple[float, float]] = Field(..., description="Route polyline points as (lat, lon)")
+    max_points: int = 10
+
+
+class RouteWeatherPoint(BaseModel):
+    latitude: float
+    longitude: float
+    temperature_f: float | None = None
+    wind_speed_kt: float | None = None
+    wind_direction: int | None = None
+    time: str | None = None
+
+
+class RouteWeatherResponse(BaseModel):
+    points: list[RouteWeatherPoint]
+
+
+@router.post("/weather/route", response_model=RouteWeatherResponse)
+def weather_route(req: RouteWeatherRequest) -> RouteWeatherResponse:
+    if not req.points:
+        raise HTTPException(status_code=400, detail="points cannot be empty")
+
+    max_points = max(1, min(int(req.max_points), 50))
+    step = max(1, (len(req.points) + max_points - 1) // max_points)
+    sampled = req.points[::step]
+
+    out: list[RouteWeatherPoint] = []
+    for lat, lon in sampled:
+        try:
+            cw = open_meteo.get_current_weather(lat=lat, lon=lon)
+            out.append(
+                RouteWeatherPoint(
+                    latitude=lat,
+                    longitude=lon,
+                    temperature_f=cw.get("temperature"),
+                    wind_speed_kt=cw.get("windspeed"),
+                    wind_direction=cw.get("winddirection"),
+                    time=cw.get("time"),
+                )
+            )
+        except Exception:
+            out.append(RouteWeatherPoint(latitude=lat, longitude=lon))
+
+    return RouteWeatherResponse(points=out)
 
 
 @router.get("/weather/{code}/forecast", response_model=ForecastResponse)

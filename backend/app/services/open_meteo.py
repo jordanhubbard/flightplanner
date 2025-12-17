@@ -9,6 +9,25 @@ class OpenMeteoError(RuntimeError):
     pass
 
 
+def get_current_weather(*, lat: float, lon: float) -> Dict[str, Any]:
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current_weather": True,
+        "timezone": "UTC",
+        "temperature_unit": "fahrenheit",
+        "windspeed_unit": "kn",
+    }
+
+    resp = httpx.get("https://api.open-meteo.com/v1/forecast", params=params, timeout=20)
+    resp.raise_for_status()
+    payload = resp.json()
+    cw = payload.get("current_weather")
+    if not isinstance(cw, dict):
+        raise OpenMeteoError("Unexpected Open-Meteo current_weather schema")
+    return cw
+
+
 def get_daily_forecast(*, lat: float, lon: float, days: int) -> List[Dict[str, Any]]:
     if days < 1 or days > 16:
         raise OpenMeteoError("days must be between 1 and 16")
