@@ -121,6 +121,51 @@ def test_plan_route_mode_astar_multi_leg(monkeypatch) -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["route"] == ["AAA", "BBB", "CCC"]
+    assert body["fuel_stops"] == ["BBB"]
+    assert body["fuel_required_with_reserve_gal"] is not None
+
+
+def test_plan_route_mode_fuel_calculation(monkeypatch) -> None:
+    import app.routers.route as route_router
+
+    monkeypatch.setattr(
+        route_router,
+        "load_airport_cache",
+        lambda: [
+            {"icao": "AAA", "latitude": 40.0, "longitude": -75.0, "name": "A"},
+            {"icao": "CCC", "latitude": 41.0, "longitude": -75.0, "name": "C"},
+        ],
+    )
+
+    monkeypatch.setattr(
+        route_router,
+        "get_airport_coordinates",
+        lambda code: {"icao": code.upper(), "iata": "", "latitude": 40.0 if code.upper() == "AAA" else 41.0, "longitude": -75.0},
+    )
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/plan",
+        json={
+            "mode": "route",
+            "origin": "AAA",
+            "destination": "CCC",
+            "speed": 60.0,
+            "speed_unit": "knots",
+            "altitude": 5500,
+            "avoid_airspaces": False,
+            "avoid_terrain": False,
+            "fuel_burn_gph": 10.0,
+            "reserve_minutes": 60,
+        },
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    # Roughly ~60nm between 1 degree latitude, at 60kt ~= 1hr, so ~10gal + 10gal reserve.
+    assert body["fuel_required_gal"] is not None
+    assert body["fuel_required_with_reserve_gal"] is not None
+    assert body["fuel_required_with_reserve_gal"] >= body["fuel_required_gal"]
 
 
 def test_plan_local_mode_ok(monkeypatch) -> None:

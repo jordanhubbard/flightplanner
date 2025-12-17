@@ -47,6 +47,7 @@ def find_route(
     destination: AirportNode,
     candidates: Sequence[AirportNode],
     max_leg_distance_nm: float,
+    per_leg_penalty_nm: float = 0.0,
     max_expansions: int = 20000,
 ) -> List[str]:
     if max_leg_distance_nm <= 0:
@@ -83,7 +84,7 @@ def find_route(
                         continue
                     d = haversine_nm((n.lat, n.lon), (nodes[j].lat, nodes[j].lon))
                     if d <= max_leg_distance_nm:
-                        yield j, d
+                        yield j, d + per_leg_penalty_nm
 
     open_heap: List[Tuple[float, int]] = []
     heapq.heappush(open_heap, (0.0, 0))

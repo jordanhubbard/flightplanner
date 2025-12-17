@@ -45,11 +45,16 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
             candidates.append(a_star.AirportNode(code=code, lat=float(lat), lon=float(lon)))
 
         try:
+            per_leg_penalty = 0.0
+            if req.fuel_strategy == "economy":
+                per_leg_penalty = 25.0
+
             route_codes = a_star.find_route(
                 origin=a_star.AirportNode(code=req.origin.upper(), lat=float(o_lat), lon=float(o_lon)),
                 destination=a_star.AirportNode(code=req.destination.upper(), lat=float(d_lat), lon=float(d_lon)),
                 candidates=candidates,
                 max_leg_distance_nm=max_leg,
+                per_leg_penalty_nm=per_leg_penalty,
             )
         except a_star.AStarError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -113,6 +118,17 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
     speed_kt = req.speed if req.speed_unit == "knots" else req.speed * 0.868976
     total_time = total_dist / speed_kt if speed_kt else 0.0
 
+    fuel_burn = None
+    reserve_minutes = None
+    fuel_required = None
+    fuel_required_with_reserve = None
+
+    if req.plan_fuel_stops or req.fuel_burn_gph is not None:
+        fuel_burn = float(req.fuel_burn_gph) if req.fuel_burn_gph is not None else 10.0
+        reserve_minutes = int(req.reserve_minutes)
+        fuel_required = total_time * fuel_burn
+        fuel_required_with_reserve = fuel_required + fuel_burn * (reserve_minutes / 60.0)
+
     segments: List[Segment] = []
     for idx, seg in enumerate(planned_segments):
         seg_type: Literal["climb", "cruise", "descent"] = "cruise"
@@ -137,4 +153,11 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         origin_coords=(o_lat, o_lon),
         destination_coords=(d_lat, d_lon),
         segments=segments,
+        fuel_stops=route_codes[1:-1] or None,
+        fuel_burn_gph=fuel_burn,
+        reserve_minutes=reserve_minutes,
+        fuel_required_gal=round(fuel_required, 2) if fuel_required is not None else None,
+        fuel_required_with_reserve_gal=round(fuel_required_with_reserve, 2)
+        if fuel_required_with_reserve is not None
+        else None,
     )
