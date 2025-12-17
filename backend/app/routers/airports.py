@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
-from app.models.airport import get_airport_coordinates
+from app.models.airport import get_airport_coordinates, search_airports
 
 
 router = APIRouter()
+
+
+@router.get("/airports/search")
+def airports_search(q: str = Query(..., min_length=1), limit: int = Query(20, ge=1, le=50)) -> list[dict]:
+    return search_airports(q, limit=limit)
 
 
 @router.get("/airports/{code}")

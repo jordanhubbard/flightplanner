@@ -1,34 +1,19 @@
 import React, { useState } from 'react'
-import { Grid, TextField, Card, CardContent, Box, Chip, Divider, Typography } from '@mui/material'
+import { Grid, Card, CardContent, Box, Chip, Divider, Typography } from '@mui/material'
 import { Flight, Schedule, Speed } from '@mui/icons-material'
-import toast from 'react-hot-toast'
 import { 
   PageHeader, 
-  FormSection, 
   EmptyState, 
   LoadingState, 
   ResultsSection 
 } from '../components/shared'
-import ModeSelector, { type PlanMode } from '../components/ModeSelector'
+import FlightPlanningForm from '../components/FlightPlanningForm'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
-import { validateAirportCode } from '../utils'
-import type { FlightPlan, LocalPlanRequest, RoutePlanRequest } from '../types'
+import type { FlightPlan, FlightPlanRequest, LocalPlanRequest, RoutePlanRequest } from '../types'
 
 const FlightPlannerPage: React.FC = () => {
-  const [mode, setMode] = useState<PlanMode>('route')
-
-  const [origin, setOrigin] = useState('')
-  const [destination, setDestination] = useState('')
-  const [airport, setAirport] = useState('')
-
-  const [speed, setSpeed] = useState<number>(110)
-  const [altitude, setAltitude] = useState<number>(5500)
-  const [radiusNm, setRadiusNm] = useState<number>(25)
-
-  const [originError, setOriginError] = useState<string>('')
-  const [destinationError, setDestinationError] = useState<string>('')
-  const [airportError, setAirportError] = useState<string>('')
+  const [lastMode, setLastMode] = useState<'local' | 'route'>('route')
 
   const routePlanMutation = useApiMutation<FlightPlan, RoutePlanRequest>((data) => flightPlannerService.plan(data), {
     successMessage: 'Route planned successfully!',
@@ -40,56 +25,14 @@ const FlightPlannerPage: React.FC = () => {
 
   const isLoading = routePlanMutation.isLoading || localPlanMutation.isLoading
 
-  const planFlight = () => {
-    if (mode === 'route') {
-      const originValidation = validateAirportCode(origin)
-      const destinationValidation = validateAirportCode(destination)
-
-      if (!originValidation.valid) {
-        setOriginError(originValidation.error || '')
-        toast.error(originValidation.error || 'Invalid origin airport')
-        return
-      }
-
-      if (!destinationValidation.valid) {
-        setDestinationError(destinationValidation.error || '')
-        toast.error(destinationValidation.error || 'Invalid destination airport')
-        return
-      }
-
-      setOriginError('')
-      setDestinationError('')
-      setAirportError('')
-
-      routePlanMutation.mutate({
-        mode: 'route',
-        origin: origin.toUpperCase(),
-        destination: destination.toUpperCase(),
-        speed,
-        speed_unit: 'knots',
-        altitude,
-        avoid_airspaces: false,
-        avoid_terrain: false,
-      })
+  const planFlight = (req: FlightPlanRequest) => {
+    setLastMode(req.mode)
+    if (req.mode === 'route') {
+      routePlanMutation.mutate(req)
       return
     }
 
-    const airportValidation = validateAirportCode(airport)
-    if (!airportValidation.valid) {
-      setAirportError(airportValidation.error || '')
-      toast.error(airportValidation.error || 'Invalid airport')
-      return
-    }
-
-    setAirportError('')
-    setOriginError('')
-    setDestinationError('')
-
-    localPlanMutation.mutate({
-      mode: 'local',
-      airport: airport.toUpperCase(),
-      radius_nm: radiusNm,
-    })
+    localPlanMutation.mutate(req)
   }
 
   const routePlan = routePlanMutation.data
@@ -100,111 +43,12 @@ const FlightPlannerPage: React.FC = () => {
       
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
-          <FormSection
-            title="Planning"
-            onSubmit={planFlight}
-            buttonText={mode === 'route' ? 'Plan Route' : 'Plan Local Flight'}
-            isLoading={isLoading}
-          >
-            <Grid item xs={12}>
-              <ModeSelector mode={mode} onChange={setMode} disabled={isLoading} />
-            </Grid>
-            
-            {mode === 'route' ? (
-              <>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Origin"
-                    placeholder="KPAO"
-                    value={origin}
-                    onChange={(e) => {
-                      setOrigin(e.target.value.toUpperCase())
-                      if (originError) setOriginError('')
-                    }}
-                    helperText={originError || 'Enter ICAO or IATA code'}
-                    error={!!originError}
-                    disabled={isLoading}
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Destination"
-                    placeholder="KSQL"
-                    value={destination}
-                    onChange={(e) => {
-                      setDestination(e.target.value.toUpperCase())
-                      if (destinationError) setDestinationError('')
-                    }}
-                    helperText={destinationError || 'Enter ICAO or IATA code'}
-                    error={!!destinationError}
-                    disabled={isLoading}
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Cruise Speed (kt)"
-                    type="number"
-                    value={speed}
-                    onChange={(e) => setSpeed(Number(e.target.value))}
-                    disabled={isLoading}
-                    inputProps={{ min: 1 }}
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Cruise Altitude (ft)"
-                    type="number"
-                    value={altitude}
-                    onChange={(e) => setAltitude(Number(e.target.value))}
-                    disabled={isLoading}
-                    inputProps={{ min: 0, step: 500 }}
-                  />
-                </Grid>
-              </>
-            ) : (
-              <>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Airport"
-                    placeholder="KPAO"
-                    value={airport}
-                    onChange={(e) => {
-                      setAirport(e.target.value.toUpperCase())
-                      if (airportError) setAirportError('')
-                    }}
-                    helperText={airportError || 'Enter ICAO or IATA code'}
-                    error={!!airportError}
-                    disabled={isLoading}
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Radius (NM)"
-                    type="number"
-                    value={radiusNm}
-                    onChange={(e) => setRadiusNm(Number(e.target.value))}
-                    disabled={isLoading}
-                    inputProps={{ min: 1 }}
-                  />
-                </Grid>
-              </>
-            )}
-          </FormSection>
+          <FlightPlanningForm isLoading={isLoading} onSubmit={planFlight} />
         </Grid>
         
         <Grid item xs={12} md={6}>
           {isLoading ? (
-            <LoadingState message={mode === 'route' ? 'Planning route...' : 'Planning local flight...'} />
+            <LoadingState message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'} />
           ) : routePlan ? (
             <ResultsSection title="Route Results">
               <Card sx={{ mb: 2 }}>
