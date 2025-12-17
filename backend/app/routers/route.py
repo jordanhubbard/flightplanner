@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.models.airport import get_airport_coordinates
+from app.services import terrain_service
 from app.services.xctry_route_planner import haversine_nm, plan_route
 
 
@@ -53,12 +54,6 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
     d_lat = dest["latitude"]
     d_lon = dest["longitude"]
 
-    if req.avoid_terrain:
-        raise HTTPException(
-            status_code=501,
-            detail="Terrain avoidance not yet wired in this unified backend (elevation service pending)",
-        )
-
     try:
         points, planned_segments = plan_route(
             origin=(o_lat, o_lon),
@@ -73,6 +68,25 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
                 f"Airspace data file not found ({e}). Populate backend/data/airspaces_us.json or set AIRSPACES_FILE."
             ),
         )
+
+    if req.avoid_terrain:
+        try:
+            max_elev_ft = terrain_service.max_elevation_ft_along_points(points)
+        except terrain_service.TerrainServiceError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        except Exception:
+            raise HTTPException(status_code=503, detail="Terrain service error")
+
+        if max_elev_ft is not None:
+            min_safe_alt = max_elev_ft + 1000.0
+            if req.altitude < min_safe_alt:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Requested altitude {req.altitude} ft is below recommended minimum {min_safe_alt:.0f} ft "
+                        f"(max terrain {max_elev_ft:.0f} ft + 1000 ft clearance)"
+                    ),
+                )
 
     total_dist = 0.0
     for i in range(len(points) - 1):

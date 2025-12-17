@@ -41,6 +41,40 @@ def test_plan_route_mode_ok(monkeypatch) -> None:
     assert "segments" in body
 
 
+def test_plan_route_mode_terrain_requires_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("OPENTOPOGRAPHY_API_KEY", raising=False)
+
+    def fake_get_airport_coordinates(code: str):
+        code_u = code.upper()
+        if code_u == "AAA":
+            return {"latitude": 40.0, "longitude": -75.0}
+        if code_u == "BBB":
+            return {"latitude": 41.0, "longitude": -76.0}
+        return None
+
+    import app.routers.route as route_router
+
+    monkeypatch.setattr(route_router, "get_airport_coordinates", fake_get_airport_coordinates)
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/plan",
+        json={
+            "mode": "route",
+            "origin": "AAA",
+            "destination": "BBB",
+            "speed": 100.0,
+            "speed_unit": "knots",
+            "altitude": 5500,
+            "avoid_airspaces": False,
+            "avoid_terrain": True,
+        },
+    )
+
+    assert resp.status_code == 503
+    assert "OPENTOPOGRAPHY_API_KEY" in resp.json()["detail"]
+
+
 def test_plan_local_mode_ok(monkeypatch) -> None:
     import app.routers.local as local_router
 
