@@ -4,9 +4,9 @@ import math
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 
 from app.models.airport import get_airport_coordinates, load_airport_cache
+from app.schemas.local import LocalPlanRequest, LocalPlanResponse
 
 router = APIRouter()
 
@@ -42,34 +42,6 @@ def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return r_nm * c
-
-
-class LocalPlanRequest(BaseModel):
-    airport: str = Field(..., description="ICAO/IATA airport code")
-    radius_nm: Optional[float] = Field(None, description="Optional radius (NM) for local planning")
-
-
-class AirportSummary(BaseModel):
-    icao: str = ""
-    iata: str = ""
-    name: Optional[str] = None
-    city: str = ""
-    country: str = ""
-    latitude: float
-    longitude: float
-    elevation: Optional[float] = None
-    type: str = ""
-
-
-class NearbyAirport(AirportSummary):
-    distance_nm: float
-
-
-class LocalPlanResponse(BaseModel):
-    airport: str
-    radius_nm: float
-    center: AirportSummary
-    nearby_airports: List[NearbyAirport]
 
 
 @router.post("/local", response_model=LocalPlanResponse)

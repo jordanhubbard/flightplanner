@@ -6,16 +6,18 @@ from fastapi import APIRouter
 from pydantic import Field
 
 from app.routers import local, route
+from app.schemas.local import LocalPlanRequest
+from app.schemas.route import RouteRequest
 
 
 router = APIRouter()
 
 
-class PlanRouteRequest(route.RouteRequest):
+class PlanRouteRequest(RouteRequest):
     mode: Literal["route"] = "route"
 
 
-class PlanLocalRequest(local.LocalPlanRequest):
+class PlanLocalRequest(LocalPlanRequest):
     mode: Literal["local"] = "local"
 
 
