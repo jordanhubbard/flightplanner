@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 
 import type { FlightPlan } from '../types'
@@ -20,6 +21,8 @@ type LegRow = {
 }
 
 const RouteLegsTable: React.FC<Props> = ({ plan }) => {
+  const theme = useTheme()
+  const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
   const points = useMemo(() => {
     if (!plan.segments || plan.segments.length === 0) {
       return [plan.origin_coords, plan.destination_coords]
@@ -50,17 +53,25 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
     return out
   }, [plan.segments, points])
 
-  const columns = useMemo<GridColDef<LegRow>[]>(
-    () => [
+  const columns = useMemo<GridColDef<LegRow>[]>(() => {
+    if (isSmall) {
+      return [
+        { field: 'leg', headerName: 'Leg', width: 70 },
+        { field: 'distance_nm', headerName: 'NM', width: 90 },
+        { field: 'vfr_altitude', headerName: 'Alt', width: 90 },
+        { field: 'type', headerName: 'Type', width: 100 },
+      ]
+    }
+
+    return [
       { field: 'leg', headerName: 'Leg', width: 70 },
       { field: 'from', headerName: 'From (lat, lon)', flex: 1, minWidth: 160 },
       { field: 'to', headerName: 'To (lat, lon)', flex: 1, minWidth: 160 },
       { field: 'distance_nm', headerName: 'Distance (nm)', width: 130 },
       { field: 'vfr_altitude', headerName: 'Alt (ft)', width: 110 },
       { field: 'type', headerName: 'Type', width: 110 },
-    ],
-    []
-  )
+    ]
+  }, [isSmall])
 
   return (
     <Box>

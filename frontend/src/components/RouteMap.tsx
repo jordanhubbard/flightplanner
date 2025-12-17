@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
-import { Box } from '@mui/material'
+import { Box, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -34,6 +35,9 @@ const FitBounds: React.FC<{ points: Array<[number, number]> }> = ({ points }) =>
 }
 
 const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
+  const theme = useTheme()
+  const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
+
   const points = useMemo(() => {
     if (!plan.segments || plan.segments.length === 0) {
       return [plan.origin_coords, plan.destination_coords]
@@ -87,7 +91,7 @@ const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
   return (
     <Box
       sx={{
-        height: 400,
+        height: { xs: 300, sm: 400 },
         borderRadius: 1,
         overflow: 'hidden',
         border: 1,
@@ -97,7 +101,7 @@ const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
       <MapContainer
         center={[center[0], center[1]]}
         zoom={8}
-        scrollWheelZoom
+        scrollWheelZoom={!isSmall}
         style={{ height: '100%', width: '100%' }}
       >
         <TileLayer

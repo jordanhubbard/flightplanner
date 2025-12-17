@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { Container, AppBar, Toolbar, Typography, Box } from '@mui/material'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import Navigation from './components/Navigation'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoadingState } from './components/shared'
@@ -37,6 +39,8 @@ const pageVariants = {
 
 function App() {
   const location = useLocation()
+  const theme = useTheme()
+  const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
 
   return (
     <ErrorBoundary>
@@ -53,7 +57,7 @@ function App() {
         
         <Container 
           maxWidth="xl" 
-          sx={{ mt: 4, mb: 4, flex: 1 }} 
+          sx={{ mt: isSmall ? 2 : 4, mb: isSmall ? 2 : 4, flex: 1 }} 
           component="main" 
           role="main"
         >

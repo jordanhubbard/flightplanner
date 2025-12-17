@@ -8,7 +8,11 @@ interface ResultsSectionProps {
 
 const ResultsSectionComponent: React.FC<ResultsSectionProps> = ({ title, children }) => {
   return (
-    <Paper sx={{ p: 3 }} role="region" aria-labelledby={`results-${title.replace(/\s+/g, '-').toLowerCase()}`}>
+    <Paper
+      sx={{ p: { xs: 2, sm: 3 } }}
+      role="region"
+      aria-labelledby={`results-${title.replace(/\s+/g, '-').toLowerCase()}`}
+    >
       <Typography variant="h6" gutterBottom component="h2" id={`results-${title.replace(/\s+/g, '-').toLowerCase()}`}>
         {title}
       </Typography>

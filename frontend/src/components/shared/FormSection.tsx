@@ -29,7 +29,7 @@ const FormSectionComponent: React.FC<FormSectionProps> = ({
   }, [onSubmit])
 
   return (
-    <Paper sx={{ p: 3 }} component="form" onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
+    <Paper sx={{ p: { xs: 2, sm: 3 } }} component="form" onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
       <Typography variant="h6" gutterBottom component="h2">
         {title}
       </Typography>

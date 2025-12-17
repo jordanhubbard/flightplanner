@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Tabs, Tab, Box } from '@mui/material'
+import { Tabs, Tab, Box, useMediaQuery } from '@mui/material'
 import { Flight, Cloud, LocalAirport } from '@mui/icons-material'
+import { useTheme } from '@mui/material/styles'
 
 const Navigation: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const theme = useTheme()
+  const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
 
   const handleChange = useCallback((_event: React.SyntheticEvent, newValue: string) => {
     navigate(newValue)
@@ -46,7 +49,10 @@ const Navigation: React.FC = () => {
       <Tabs 
         value={location.pathname} 
         onChange={handleChange} 
-        centered
+        centered={!isSmall}
+        variant={isSmall ? 'scrollable' : 'standard'}
+        scrollButtons={isSmall ? 'auto' : false}
+        allowScrollButtonsMobile
         aria-label="Navigation tabs"
       >
         <Tab 
