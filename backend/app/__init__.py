@@ -1,10 +1,22 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.extension import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from app.config import Settings
 from app.routers import airspace, airports, health, local, plan, route, terrain, weather
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
 
 
 def create_app(settings: Settings) -> FastAPI:
@@ -12,7 +24,13 @@ def create_app(settings: Settings) -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         debug=settings.debug,
+        lifespan=lifespan,
     )
+
+    limiter = Limiter(key_func=get_remote_address, default_limits=["1000/minute"])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
 
     app.add_middleware(
         CORSMiddleware,
