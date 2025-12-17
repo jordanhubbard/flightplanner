@@ -5,6 +5,8 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from app.utils.ttl_cache import weather_cache
+
 
 class OpenWeatherMapError(RuntimeError):
     pass
@@ -19,16 +21,22 @@ def _api_key() -> str:
 
 def get_current_weather(*, lat: float, lon: float) -> Dict[str, Any]:
     key = _api_key()
-    params = {
-        "lat": lat,
-        "lon": lon,
-        "appid": key,
-        "units": "imperial",
-    }
 
-    resp = httpx.get("https://api.openweathermap.org/data/2.5/weather", params=params, timeout=20)
-    resp.raise_for_status()
-    return resp.json()
+    cache_key = f"owm:current:{round(lat, 3)}:{round(lon, 3)}"
+
+    def _fetch() -> Dict[str, Any]:
+        params = {
+            "lat": lat,
+            "lon": lon,
+            "appid": key,
+            "units": "imperial",
+        }
+
+        resp = httpx.get("https://api.openweathermap.org/data/2.5/weather", params=params, timeout=20)
+        resp.raise_for_status()
+        return resp.json()
+
+    return weather_cache.get_or_set(cache_key, ttl_s=300, fn=_fetch, allow_stale_on_error=True)
 
 
 def _mph_to_knots(mph: Optional[float]) -> float:

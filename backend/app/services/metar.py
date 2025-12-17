@@ -6,25 +6,33 @@ from typing import Any, Dict, Optional
 
 import httpx
 
+from app.utils.ttl_cache import weather_cache
+
 
 def fetch_metar_raw(station: str) -> Optional[str]:
-    resp = httpx.get(
-        "https://aviationweather.gov/api/data/metar",
-        params={"ids": station.upper(), "format": "raw"},
-        headers={"User-Agent": "flightplanner"},
-        timeout=20,
-    )
+    station_u = station.upper()
+    cache_key = f"metar:{station_u}"
 
-    if resp.status_code == 204:
-        return None
+    def _fetch() -> Optional[str]:
+        resp = httpx.get(
+            "https://aviationweather.gov/api/data/metar",
+            params={"ids": station_u, "format": "raw"},
+            headers={"User-Agent": "flightplanner"},
+            timeout=20,
+        )
 
-    resp.raise_for_status()
-    text = resp.text.strip()
-    if not text:
-        return None
+        if resp.status_code == 204:
+            return None
 
-    # API may return multiple lines; we only requested a single station.
-    return text.splitlines()[0].strip() or None
+        resp.raise_for_status()
+        text = resp.text.strip()
+        if not text:
+            return None
+
+        # API may return multiple lines; we only requested a single station.
+        return text.splitlines()[0].strip() or None
+
+    return weather_cache.get_or_set(cache_key, ttl_s=300, fn=_fetch, allow_stale_on_error=True)
 
 
 _WIND_RE = re.compile(r"\b(?P<dir>\d{3}|VRB)(?P<speed>\d{2,3})(G(?P<gust>\d{2,3}))?KT\b")
