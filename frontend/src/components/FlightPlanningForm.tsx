@@ -40,6 +40,7 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
 
   const [avoidAirspaces, setAvoidAirspaces] = useState(false)
   const [avoidTerrain, setAvoidTerrain] = useState(false)
+  const [applyWind, setApplyWind] = useState(true)
 
   const [forecastDays, setForecastDays] = useState<number>(3)
 
@@ -78,6 +79,7 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
         altitude,
         avoid_airspaces: avoidAirspaces,
         avoid_terrain: avoidTerrain,
+        apply_wind: applyWind,
       }
       onSubmit(req)
       return
@@ -198,6 +200,16 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
                 />
               }
               label="Avoid terrain"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={applyWind}
+                  onChange={(e) => setApplyWind(e.target.checked)}
+                  disabled={isLoading}
+                />
+              }
+              label="Apply wind to groundspeed/time"
             />
           </Grid>
         </>

@@ -7,6 +7,12 @@ export type {
   SpeedUnit,
   Segment,
 } from './flight.types'
-export type { WeatherData, DailyForecast, ForecastResponse } from './weather.types'
+export type {
+  WeatherData,
+  DailyForecast,
+  ForecastResponse,
+  RouteWeatherPoint,
+  RouteWeatherResponse,
+} from './weather.types'
 export type { Airport } from './airport.types'
 export type { TerrainProfilePoint, TerrainProfileResponse } from './terrain.types'

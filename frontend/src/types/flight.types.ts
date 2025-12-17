@@ -16,6 +16,18 @@ export interface FlightPlan {
   origin_coords: [number, number]
   destination_coords: [number, number]
   segments: Segment[]
+
+  fuel_stops?: string[] | null
+  fuel_burn_gph?: number | null
+  reserve_minutes?: number | null
+  fuel_required_gal?: number | null
+  fuel_required_with_reserve_gal?: number | null
+
+  wind_speed_kt?: number | null
+  wind_direction_deg?: number | null
+  headwind_kt?: number | null
+  crosswind_kt?: number | null
+  groundspeed_kt?: number | null
 }
 
 export type RoutePlanRequest = {
@@ -27,6 +39,14 @@ export type RoutePlanRequest = {
   altitude: number
   avoid_airspaces?: boolean
   avoid_terrain?: boolean
+
+  plan_fuel_stops?: boolean
+  aircraft_range_nm?: number
+  max_leg_distance?: number
+  fuel_burn_gph?: number
+  reserve_minutes?: number
+  fuel_strategy?: 'time' | 'economy'
+  apply_wind?: boolean
 }
 
 export type LocalPlanRequest = {

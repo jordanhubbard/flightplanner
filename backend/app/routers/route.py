@@ -7,7 +7,9 @@ from fastapi import APIRouter, HTTPException
 from app.models.airport import get_airport_coordinates, load_airport_cache
 from app.schemas.route import RouteRequest, RouteResponse, Segment
 from app.services import a_star
+from app.services import open_meteo
 from app.services import terrain_service
+from app.services import wind
 from app.services.xctry_route_planner import haversine_nm, plan_route
 
 
@@ -116,7 +118,37 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         total_dist += haversine_nm(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
 
     speed_kt = req.speed if req.speed_unit == "knots" else req.speed * 0.868976
-    total_time = total_dist / speed_kt if speed_kt else 0.0
+
+    wind_speed_kt = None
+    wind_direction_deg = None
+    headwind_kt = None
+    crosswind_kt = None
+    groundspeed_kt = None
+
+    effective_speed_kt = speed_kt
+    if req.apply_wind and points:
+        try:
+            mid = points[len(points) // 2]
+            cw = open_meteo.get_current_weather(lat=float(mid[0]), lon=float(mid[1]))
+            w_speed = cw.get("windspeed")
+            w_dir = cw.get("winddirection")
+            if w_speed is not None and w_dir is not None:
+                wind_speed_kt = float(w_speed)
+                wind_direction_deg = int(w_dir)
+                track = wind.bearing_deg((float(o_lat), float(o_lon)), (float(d_lat), float(d_lon)))
+                head, cross = wind.wind_components_kt(
+                    track_deg=track,
+                    wind_from_deg=float(wind_direction_deg),
+                    wind_speed_kt=wind_speed_kt,
+                )
+                headwind_kt = round(head, 1)
+                crosswind_kt = round(cross, 1)
+                effective_speed_kt = max(30.0, speed_kt - head)
+                groundspeed_kt = round(effective_speed_kt, 1)
+        except Exception:
+            pass
+
+    total_time = total_dist / effective_speed_kt if effective_speed_kt else 0.0
 
     fuel_burn = None
     reserve_minutes = None
@@ -160,4 +192,9 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         fuel_required_with_reserve_gal=round(fuel_required_with_reserve, 2)
         if fuel_required_with_reserve is not None
         else None,
+        wind_speed_kt=wind_speed_kt,
+        wind_direction_deg=wind_direction_deg,
+        headwind_kt=headwind_kt,
+        crosswind_kt=crosswind_kt,
+        groundspeed_kt=groundspeed_kt,
     )

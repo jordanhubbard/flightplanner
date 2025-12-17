@@ -121,6 +121,26 @@ const FlightPlannerPage: React.FC = () => {
                         </Typography>
                       </Box>
                     </Grid>
+
+                    {routePlan.groundspeed_kt != null && (
+                      <Grid item xs={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <Speed sx={{ mr: 1, fontSize: 20 }} />
+                          <Typography variant="body2">Groundspeed: {routePlan.groundspeed_kt} kt</Typography>
+                        </Box>
+                      </Grid>
+                    )}
+
+                    {routePlan.headwind_kt != null && (
+                      <Grid item xs={6}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <Speed sx={{ mr: 1, fontSize: 20 }} />
+                          <Typography variant="body2">
+                            {routePlan.headwind_kt >= 0 ? 'Headwind' : 'Tailwind'}: {Math.abs(routePlan.headwind_kt)} kt
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    )}
                   </Grid>
                 </CardContent>
               </Card>

@@ -22,3 +22,16 @@ export interface ForecastResponse {
   days: number
   daily: DailyForecast[]
 }
+
+export interface RouteWeatherPoint {
+  latitude: number
+  longitude: number
+  temperature_f?: number | null
+  wind_speed_kt?: number | null
+  wind_direction?: number | null
+  time?: string | null
+}
+
+export interface RouteWeatherResponse {
+  points: RouteWeatherPoint[]
+}

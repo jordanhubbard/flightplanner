@@ -19,6 +19,7 @@ class RouteRequest(BaseModel):
     fuel_burn_gph: Optional[float] = None
     reserve_minutes: int = 45
     fuel_strategy: Literal["time", "economy"] = "time"
+    apply_wind: bool = False
 
 
 class Segment(BaseModel):
@@ -40,3 +41,8 @@ class RouteResponse(BaseModel):
     reserve_minutes: Optional[int] = None
     fuel_required_gal: Optional[float] = None
     fuel_required_with_reserve_gal: Optional[float] = None
+    wind_speed_kt: Optional[float] = None
+    wind_direction_deg: Optional[int] = None
+    headwind_kt: Optional[float] = None
+    crosswind_kt: Optional[float] = None
+    groundspeed_kt: Optional[float] = None
