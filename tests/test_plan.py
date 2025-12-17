@@ -75,6 +75,54 @@ def test_plan_route_mode_terrain_requires_api_key(monkeypatch) -> None:
     assert "OPENTOPOGRAPHY_API_KEY" in resp.json()["detail"]
 
 
+def test_plan_route_mode_astar_multi_leg(monkeypatch) -> None:
+    import app.routers.route as route_router
+
+    monkeypatch.setattr(
+        route_router,
+        "load_airport_cache",
+        lambda: [
+            {"icao": "AAA", "latitude": 40.0, "longitude": -75.0, "name": "A"},
+            {"icao": "BBB", "latitude": 41.0, "longitude": -75.0, "name": "B"},
+            {"icao": "CCC", "latitude": 42.0, "longitude": -75.0, "name": "C"},
+        ],
+    )
+
+    def fake_get_airport_coordinates(code: str):
+        code_u = code.upper()
+        if code_u == "AAA":
+            return {"icao": "AAA", "iata": "", "latitude": 40.0, "longitude": -75.0}
+        if code_u == "BBB":
+            return {"icao": "BBB", "iata": "", "latitude": 41.0, "longitude": -75.0}
+        if code_u == "CCC":
+            return {"icao": "CCC", "iata": "", "latitude": 42.0, "longitude": -75.0}
+        return None
+
+    monkeypatch.setattr(route_router, "get_airport_coordinates", fake_get_airport_coordinates)
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/plan",
+        json={
+            "mode": "route",
+            "origin": "AAA",
+            "destination": "CCC",
+            "speed": 100.0,
+            "speed_unit": "knots",
+            "altitude": 5500,
+            "avoid_airspaces": False,
+            "avoid_terrain": False,
+            "plan_fuel_stops": True,
+            "aircraft_range_nm": 80,
+            "max_leg_distance": 80,
+        },
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["route"] == ["AAA", "BBB", "CCC"]
+
+
 def test_plan_local_mode_ok(monkeypatch) -> None:
     import app.routers.local as local_router
 

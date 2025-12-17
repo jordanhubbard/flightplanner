@@ -4,8 +4,9 @@ from typing import List, Literal
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.airport import get_airport_coordinates
+from app.models.airport import get_airport_coordinates, load_airport_cache
 from app.schemas.route import RouteRequest, RouteResponse, Segment
+from app.services import a_star
 from app.services import terrain_service
 from app.services.xctry_route_planner import haversine_nm, plan_route
 
@@ -25,13 +26,59 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
     d_lat = dest["latitude"]
     d_lon = dest["longitude"]
 
+    route_codes = [req.origin.upper(), req.destination.upper()]
+    if req.plan_fuel_stops or req.aircraft_range_nm is not None:
+        max_leg = float(req.aircraft_range_nm) if req.aircraft_range_nm is not None else float(req.max_leg_distance)
+        max_leg = min(max_leg, float(req.max_leg_distance))
+
+        candidates = []
+        for ap in load_airport_cache():
+            icao = str(ap.get("icao") or "").upper()
+            iata = str(ap.get("iata") or "").upper()
+            code = icao or iata
+            if not code:
+                continue
+            lat = ap.get("latitude")
+            lon = ap.get("longitude")
+            if lat is None or lon is None:
+                continue
+            candidates.append(a_star.AirportNode(code=code, lat=float(lat), lon=float(lon)))
+
+        try:
+            route_codes = a_star.find_route(
+                origin=a_star.AirportNode(code=req.origin.upper(), lat=float(o_lat), lon=float(o_lon)),
+                destination=a_star.AirportNode(code=req.destination.upper(), lat=float(d_lat), lon=float(d_lon)),
+                candidates=candidates,
+                max_leg_distance_nm=max_leg,
+            )
+        except a_star.AStarError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
     try:
-        points, planned_segments = plan_route(
-            origin=(o_lat, o_lon),
-            destination=(d_lat, d_lon),
-            cruising_altitude_ft=req.altitude,
-            avoid_airspaces_enabled=req.avoid_airspaces,
-        )
+        points: List[tuple[float, float]] = []
+        planned_segments = []
+
+        for i in range(len(route_codes) - 1):
+            a_code = route_codes[i]
+            b_code = route_codes[i + 1]
+            a_ap = get_airport_coordinates(a_code)
+            b_ap = get_airport_coordinates(b_code)
+            if not a_ap or not b_ap:
+                raise HTTPException(status_code=400, detail="Invalid waypoint code")
+
+            leg_points, leg_segments = plan_route(
+                origin=(float(a_ap["latitude"]), float(a_ap["longitude"])),
+                destination=(float(b_ap["latitude"]), float(b_ap["longitude"])),
+                cruising_altitude_ft=req.altitude,
+                avoid_airspaces_enabled=req.avoid_airspaces,
+            )
+
+            if not points:
+                points = list(leg_points)
+            else:
+                points.extend(list(leg_points)[1:])
+
+            planned_segments.extend(list(leg_segments))
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=503,
@@ -84,7 +131,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         )
 
     return RouteResponse(
-        route=[req.origin.upper(), req.destination.upper()],
+        route=route_codes,
         distance_nm=round(total_dist, 1),
         time_hr=round(total_time, 2),
         origin_coords=(o_lat, o_lon),
