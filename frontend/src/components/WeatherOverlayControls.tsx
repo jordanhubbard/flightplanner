@@ -2,6 +2,8 @@ import React from 'react'
 import { Box, FormControlLabel, FormGroup, Slider, Switch, Typography } from '@mui/material'
 import toast from 'react-hot-toast'
 
+import { getRuntimeEnv } from '../utils'
+
 export type WeatherOverlayKey = 'clouds' | 'wind' | 'precipitation' | 'temperature'
 
 export type WeatherOverlayConfig = {
@@ -25,7 +27,7 @@ const LABELS: Record<WeatherOverlayKey, string> = {
 }
 
 const WeatherOverlayControls: React.FC<Props> = ({ overlays, setOverlays, disabled }) => {
-  const apiKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY
+  const apiKey = getRuntimeEnv('VITE_OPENWEATHERMAP_API_KEY')
   const apiKeyAvailable = Boolean(apiKey)
 
   const toggle = (key: WeatherOverlayKey) => {

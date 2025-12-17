@@ -5,6 +5,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 import { useRouteWeather } from '../hooks'
+import { getRuntimeEnv } from '../utils'
 import type { FlightPlan } from '../types'
 import type { WeatherOverlayKey, WeatherOverlays } from './WeatherOverlayControls'
 
@@ -44,7 +45,7 @@ const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
   }, [plan])
 
   const center = points[0] || plan.origin_coords
-  const owmKey = import.meta.env.VITE_OPENWEATHERMAP_API_KEY
+  const owmKey = getRuntimeEnv('VITE_OPENWEATHERMAP_API_KEY')
   const windBarbsEnabled = Boolean(overlays?.wind.enabled)
   const routeWeather = useRouteWeather(points, 12, windBarbsEnabled)
 
