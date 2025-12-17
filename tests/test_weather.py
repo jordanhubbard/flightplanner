@@ -40,3 +40,37 @@ def test_weather_ok(monkeypatch) -> None:
     assert body["conditions"]
     assert body["temperature"] == 72
     assert body["wind_direction"] == 270
+
+
+def test_weather_metar_overrides_fields(monkeypatch) -> None:
+    import app.routers.weather as weather_router
+
+    monkeypatch.setenv("OPENWEATHERMAP_API_KEY", "test-key")
+    monkeypatch.setattr(weather_router, "get_airport_coordinates", lambda _code: {"latitude": 40.0, "longitude": -75.0})
+    monkeypatch.setattr(
+        weather_router.openweathermap,
+        "get_current_weather",
+        lambda **_kwargs: {
+            "weather": [{"main": "Clouds", "description": "overcast"}],
+            "main": {"temp": 50.0},
+            "wind": {"speed": 5.0, "deg": 90},
+            "visibility": 1000,
+            "clouds": {"all": 90},
+        },
+    )
+    monkeypatch.setattr(
+        weather_router.metar,
+        "fetch_metar_raw",
+        lambda _station: "KAAA 171856Z 27010KT 10SM BKN020 20/10 A2992",
+    )
+
+    client = TestClient(app)
+    resp = client.get("/api/weather/AAA")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["metar"].startswith("KAAA")
+    assert body["wind_speed"] == 10
+    assert body["wind_direction"] == 270
+    assert body["visibility"] == 10.0
+    assert body["ceiling"] == 2000
+    assert body["temperature"] == 68

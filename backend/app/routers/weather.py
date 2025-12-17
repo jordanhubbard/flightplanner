@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.models.airport import get_airport_coordinates
+from app.services import metar
 from app.services import openweathermap
 
 
@@ -29,7 +30,24 @@ def weather_for_airport(code: str) -> dict:
 
     try:
         payload = openweathermap.get_current_weather(lat=float(coords["latitude"]), lon=float(coords["longitude"]))
-        return openweathermap.to_weather_data(code, payload)
+        data = openweathermap.to_weather_data(code, payload)
+
+        raw = metar.fetch_metar_raw(code.upper())
+        if raw:
+            data["metar"] = raw
+            parsed = metar.parse_metar(raw)
+            if parsed.get("temperature_f") is not None:
+                data["temperature"] = parsed["temperature_f"]
+            if parsed.get("wind_speed_kt") is not None:
+                data["wind_speed"] = parsed["wind_speed_kt"]
+            if parsed.get("wind_direction") is not None:
+                data["wind_direction"] = parsed["wind_direction"]
+            if parsed.get("visibility_sm") is not None:
+                data["visibility"] = round(float(parsed["visibility_sm"]), 1)
+            if parsed.get("ceiling_ft") is not None:
+                data["ceiling"] = parsed["ceiling_ft"]
+
+        return data
     except openweathermap.OpenWeatherMapError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception:
