@@ -1,3 +1,3 @@
-from . import health, route_planning
+from . import airspace, airports, health, local, route, terrain, weather
 
-__all__ = ["health", "route_planning"]
+__all__ = ["airspace", "airports", "health", "local", "route", "terrain", "weather"]
