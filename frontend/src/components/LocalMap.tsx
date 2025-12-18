@@ -155,16 +155,23 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
 
   const windIcon = (direction: number, speed: number, category: FlightCategory) => {
     const colors = CATEGORY_COLORS[category]
+    const hasCategory = category !== 'UNKNOWN'
 
     return L.divIcon({
       className: '',
       iconSize: [40, 40],
       iconAnchor: [20, 20],
-      html: windBarbSvg(direction, speed, {
-        size: 40,
-        backgroundFill: colors.fill,
-        backgroundStroke: colors.stroke,
-      }),
+      html: windBarbSvg(
+        direction,
+        speed,
+        hasCategory
+          ? {
+              size: 40,
+              backgroundFill: colors.fill,
+              backgroundStroke: colors.stroke,
+            }
+          : { size: 40 },
+      ),
     })
   }
 
@@ -244,6 +251,10 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
           const code = (ap.icao || ap.iata || '').toUpperCase()
           const weather = code ? weatherByCode.get(code) : undefined
           const cat = toCategory(weather?.flight_category ?? null)
+
+          // Only show weather status circles for airports that actually report a category.
+          if (cat === 'UNKNOWN') return null
+
           const colors = CATEGORY_COLORS[cat]
 
           return (
