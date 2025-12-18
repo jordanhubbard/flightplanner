@@ -134,7 +134,7 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
   const stationWeatherQueries = useQueries(
     weatherStations.map((s) => ({
       queryKey: ['weather', s.code],
-      queryFn: () => weatherService.getWeather(s.code),
+      queryFn: () => weatherService.getWeather(s.code, { suppressToast: true }),
       enabled: Boolean(s.code),
       staleTime: 5 * 60 * 1000,
       retry: 0,

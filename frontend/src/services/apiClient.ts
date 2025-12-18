@@ -1,6 +1,10 @@
 import axios, { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
 
+const toastOnce = (message: string) => {
+  toast.error(message, { id: message })
+}
+
 export const apiClient = axios.create({
   baseURL: '/api',
   timeout: 30000,
@@ -13,20 +17,24 @@ export const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
+    if ((error.config as unknown as { suppressToast?: boolean } | undefined)?.suppressToast) {
+      return Promise.reject(error)
+    }
+
     if (error.response?.status === 429) {
-      toast.error('Too many requests. Please wait a moment.')
+      toastOnce('Too many requests. Please wait a moment.')
     } else if (error.response?.status === 500) {
-      toast.error('Server error. Please try again later.')
+      toastOnce('Server error. Please try again later.')
     } else if (error.response?.status === 404) {
-      toast.error('Resource not found.')
+      toastOnce('Resource not found.')
     } else if (!error.response) {
-      toast.error('Network error. Check your connection.')
+      toastOnce('Network error. Check your connection.')
     } else if (
       error.response?.data &&
       typeof error.response.data === 'object' &&
       'detail' in error.response.data
     ) {
-      toast.error(String(error.response.data.detail))
+      toastOnce(String(error.response.data.detail))
     }
     return Promise.reject(error)
   },

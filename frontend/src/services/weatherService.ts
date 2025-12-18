@@ -1,4 +1,5 @@
 import { apiClient } from './apiClient'
+import type { AxiosRequestConfig } from 'axios'
 import type {
   ForecastResponse,
   RouteWeatherResponse,
@@ -7,8 +8,19 @@ import type {
 } from '../types'
 
 export const weatherService = {
-  getWeather: async (airport: string): Promise<WeatherData> => {
-    const response = await apiClient.get<WeatherData>(`/weather/${airport}`)
+  getWeather: async (
+    airport: string,
+    opts?: {
+      suppressToast?: boolean
+    },
+  ): Promise<WeatherData> => {
+    const config: AxiosRequestConfig | undefined = opts?.suppressToast
+      ? ({ suppressToast: true } as unknown as AxiosRequestConfig)
+      : undefined
+    const response = await apiClient.get<WeatherData>(
+      `/weather/${airport}`,
+      config,
+    )
     return response.data
   },
 
