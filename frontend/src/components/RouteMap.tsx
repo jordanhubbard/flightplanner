@@ -99,7 +99,7 @@ const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
   return (
     <Box
       sx={{
-        height: { xs: 300, sm: 400 },
+        height: { xs: 300, sm: 400, md: 520, lg: 640 },
         borderRadius: 1,
         overflow: 'hidden',
         border: 1,

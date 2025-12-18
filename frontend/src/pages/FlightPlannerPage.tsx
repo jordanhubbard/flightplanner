@@ -77,11 +77,11 @@ const FlightPlannerPage: React.FC = () => {
       <PageHeader icon={<Flight />} title="VFR Flight Planner" />
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <FlightPlanningForm isLoading={isLoading} onSubmit={planFlight} />
         </Grid>
 
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={8}>
           {isLoading ? (
             <LoadingState
               message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'}
@@ -195,15 +195,19 @@ const FlightPlannerPage: React.FC = () => {
                 </Card>
               ) : null}
 
-              <Box sx={{ mb: 2 }}>
-                <WeatherOverlayControls
-                  overlays={overlays}
-                  setOverlays={setOverlays}
-                  disabled={isLoading}
-                />
-              </Box>
+              <Grid container spacing={2} alignItems="flex-start">
+                <Grid item xs={12} md={4}>
+                  <WeatherOverlayControls
+                    overlays={overlays}
+                    setOverlays={setOverlays}
+                    disabled={isLoading}
+                  />
+                </Grid>
 
-              <RouteMap plan={routePlan} overlays={overlays} />
+                <Grid item xs={12} md={8}>
+                  <RouteMap plan={routePlan} overlays={overlays} />
+                </Grid>
+              </Grid>
             </ResultsSection>
           ) : lastMode === 'local' && localPlan ? (
             <ResultsSection title="Local Results">
@@ -226,15 +230,19 @@ const FlightPlannerPage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Box sx={{ mb: 2 }}>
-                <WeatherOverlayControls
-                  overlays={overlays}
-                  setOverlays={setOverlays}
-                  disabled={isLoading}
-                />
-              </Box>
+              <Grid container spacing={2} alignItems="flex-start">
+                <Grid item xs={12} md={4}>
+                  <WeatherOverlayControls
+                    overlays={overlays}
+                    setOverlays={setOverlays}
+                    disabled={isLoading}
+                  />
+                </Grid>
 
-              <LocalMap plan={localPlan} overlays={overlays} />
+                <Grid item xs={12} md={8}>
+                  <LocalMap plan={localPlan} overlays={overlays} />
+                </Grid>
+              </Grid>
             </ResultsSection>
           ) : (
             <EmptyState
