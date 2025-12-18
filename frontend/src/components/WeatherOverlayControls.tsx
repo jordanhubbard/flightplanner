@@ -31,8 +31,10 @@ const WeatherOverlayControls: React.FC<Props> = ({ overlays, setOverlays, disabl
   const apiKeyAvailable = Boolean(apiKey)
 
   const toggle = (key: WeatherOverlayKey) => {
-    if (!apiKeyAvailable && !overlays[key].enabled) {
-      toast.error('Set VITE_OPENWEATHERMAP_API_KEY to enable weather overlays')
+    // Wind barbs can be sourced from our backend without an OpenWeatherMap key.
+    // The raster tile overlays (clouds/precip/temp + wind tiles) require OWM.
+    if (!apiKeyAvailable && key !== 'wind' && !overlays[key].enabled) {
+      toast.error('Set VITE_OPENWEATHERMAP_API_KEY to enable weather tile overlays')
       return
     }
     setOverlays({
@@ -56,7 +58,8 @@ const WeatherOverlayControls: React.FC<Props> = ({ overlays, setOverlays, disabl
 
       {!apiKeyAvailable && (
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-          Overlays require <code>VITE_OPENWEATHERMAP_API_KEY</code>
+          Weather tile overlays require <code>VITE_OPENWEATHERMAP_API_KEY</code> (wind barbs do
+          not).
         </Typography>
       )}
 

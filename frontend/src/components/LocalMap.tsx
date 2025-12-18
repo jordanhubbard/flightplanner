@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react'
 import { Box, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import { MapContainer, TileLayer, Circle, CircleMarker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Circle, CircleMarker, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+import { useRouteWeather } from '../hooks'
 import { getRuntimeEnv } from '../utils'
 import type { LocalPlanResponse } from '../types'
 import type { WeatherOverlayKey, WeatherOverlays } from './WeatherOverlayControls'
@@ -39,6 +40,8 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
   const theme = useTheme()
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
 
+  const windBarbsEnabled = Boolean(overlays?.wind.enabled)
+
   const center = useMemo<[number, number]>(
     () => [plan.center.latitude, plan.center.longitude],
     [plan.center.latitude, plan.center.longitude],
@@ -52,7 +55,77 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
     return pts
   }, [center, plan.nearby_airports])
 
+  const stationMarkers = useMemo(() => {
+    const markers: Array<{ lat: number; lon: number; label: string }> = []
+
+    markers.push({
+      lat: plan.center.latitude,
+      lon: plan.center.longitude,
+      label: plan.center.icao || plan.center.iata,
+    })
+
+    for (const ap of plan.nearby_airports.slice(0, 20)) {
+      markers.push({
+        lat: ap.latitude,
+        lon: ap.longitude,
+        label: ap.icao || ap.iata,
+      })
+    }
+
+    return markers
+  }, [plan.center, plan.nearby_airports])
+
+  const stationPoints = useMemo(
+    () => stationMarkers.map((m) => [m.lat, m.lon] as [number, number]),
+    [stationMarkers],
+  )
+
+  const stationLabelByKey = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const s of stationMarkers) {
+      m.set(`${s.lat.toFixed(6)},${s.lon.toFixed(6)}`, s.label)
+    }
+    return m
+  }, [stationMarkers])
+
+  const stationWeather = useRouteWeather(stationPoints, stationPoints.length, windBarbsEnabled)
+
   const owmKey = getRuntimeEnv('VITE_OPENWEATHERMAP_API_KEY')
+
+  const windIcon = (direction: number, speed: number) => {
+    const rot = Number.isFinite(direction) ? direction : 0
+    const spd = Number.isFinite(speed) ? Math.round(speed) : 0
+
+    return L.divIcon({
+      className: '',
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+      html: `
+        <div style="
+          width: 30px;
+          height: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform: rotate(${rot}deg);
+          font-size: 18px;
+          line-height: 1;
+          color: #111;
+          text-shadow: 0 0 2px rgba(255,255,255,0.9);
+        ">
+          ↑
+        </div>
+        <div style="
+          position: relative;
+          top: -26px;
+          left: 16px;
+          font-size: 10px;
+          color: #111;
+          text-shadow: 0 0 2px rgba(255,255,255,0.9);
+        ">${spd}</div>
+      `,
+    })
+  }
 
   return (
     <Box
@@ -90,6 +163,26 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
           })}
 
         <FitBounds points={points} />
+
+        {windBarbsEnabled &&
+          stationWeather.data?.points
+            .filter((p) => p.wind_speed_kt != null && p.wind_direction != null)
+            .map((p) => {
+              const k = `${p.latitude.toFixed(6)},${p.longitude.toFixed(6)}`
+              const label = stationLabelByKey.get(k)
+              return (
+                <Marker
+                  key={k}
+                  position={[p.latitude, p.longitude]}
+                  icon={windIcon(p.wind_direction as number, p.wind_speed_kt as number)}
+                >
+                  <Popup>
+                    {label ? `${label}: ` : ''}
+                    Wind: {Math.round(p.wind_speed_kt as number)} kt @ {p.wind_direction}°
+                  </Popup>
+                </Marker>
+              )
+            })}
 
         <Circle
           center={[center[0], center[1]]}
