@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import json
 import logging
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.extension import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from starlette.staticfiles import StaticFiles
 
 from app.config import Settings
 from app.openapi import APP_DESCRIPTION, OPENAPI_TAGS
@@ -19,6 +23,17 @@ from app.startup_checks import collect_startup_config_issues
 
 
 logger = logging.getLogger(__name__)
+
+
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        if path == "api" or path.startswith("api/"):
+            return Response("Not Found", status_code=404, media_type="text/plain")
+
+        response = await super().get_response(path, scope)
+        if response.status_code == 404:
+            return await super().get_response("index.html", scope)
+        return response
 
 
 def create_app(settings: Settings) -> FastAPI:
@@ -72,5 +87,25 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(local.router, prefix=settings.api_prefix, tags=["local"])
     app.include_router(airspace.router, prefix=settings.api_prefix, tags=["airspace"])
     app.include_router(terrain.router, prefix=settings.api_prefix, tags=["terrain"])
+
+    static_dir = Path(__file__).resolve().parents[1] / "static"
+    if static_dir.exists():
+
+        @app.get("/env.js", include_in_schema=False)
+        def env_js() -> Response:
+            key = (
+                os.environ.get("VITE_OPENWEATHERMAP_API_KEY")
+                or os.environ.get("OPENWEATHERMAP_API_KEY")
+                or ""
+            )
+            payload = {}
+            if key:
+                payload["VITE_OPENWEATHERMAP_API_KEY"] = key
+            js = "window.__ENV__ = window.__ENV__ || {};\n"
+            for k, v in payload.items():
+                js += f"window.__ENV__[{json.dumps(k)}] = {json.dumps(v)};\n"
+            return Response(js, media_type="application/javascript")
+
+        app.mount("/", SPAStaticFiles(directory=static_dir, html=True), name="spa")
 
     return app
