@@ -6,7 +6,8 @@ import logging
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter
@@ -18,7 +19,12 @@ from starlette.staticfiles import StaticFiles
 
 from app.config import Settings
 from app.openapi import APP_DESCRIPTION, OPENAPI_TAGS
-from app.routers import airspace, airports, health, local, plan, route, terrain, weather
+from app.routers import airspace, airports, beads, health, local, plan, route, terrain, weather
+from app.services.beads_reporter import (
+    beads_issue_creator,
+    maybe_install_log_handler,
+    report_unhandled_exception,
+)
 from app.startup_checks import collect_startup_config_issues
 
 
@@ -49,6 +55,9 @@ def create_app(settings: Settings) -> FastAPI:
     async def lifespan(app: FastAPI):
         issues = collect_startup_config_issues()
         app.state.startup_config_issues = issues
+
+        maybe_install_log_handler()
+
         for issue in issues:
             missing = ", ".join(issue.get("missing") or [])
             feature = issue.get("feature") or "unknown feature"
@@ -80,6 +89,7 @@ def create_app(settings: Settings) -> FastAPI:
     )
 
     app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
+    app.include_router(beads.router, prefix=settings.api_prefix, tags=["beads"])
     app.include_router(plan.router, prefix=settings.api_prefix, tags=["plan"])
     app.include_router(airports.router, prefix=settings.api_prefix, tags=["airports"])
     app.include_router(weather.router, prefix=settings.api_prefix, tags=["weather"])
@@ -87,6 +97,21 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(local.router, prefix=settings.api_prefix, tags=["local"])
     app.include_router(airspace.router, prefix=settings.api_prefix, tags=["airspace"])
     app.include_router(terrain.router, prefix=settings.api_prefix, tags=["terrain"])
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception):
+        report_unhandled_exception(
+            where="exception_handler",
+            exc=exc,
+            context={
+                "method": request.method,
+                "path": str(request.url.path),
+                "query": str(request.url.query),
+            },
+        )
+        if settings.debug:
+            return JSONResponse(status_code=500, content={"detail": str(exc)})
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
     static_dir = Path(__file__).resolve().parents[1] / "static"
     if static_dir.exists():
@@ -101,6 +126,7 @@ def create_app(settings: Settings) -> FastAPI:
             payload = {}
             if key:
                 payload["VITE_OPENWEATHERMAP_API_KEY"] = key
+            payload["VITE_BEADS_AUTOREPORT"] = "1" if beads_issue_creator.enabled() else "0"
             js = "window.__ENV__ = window.__ENV__ || {};\n"
             for k, v in payload.items():
                 js += f"window.__ENV__[{json.dumps(k)}] = {json.dumps(v)};\n"

@@ -7,6 +7,8 @@ import { QueryClient, QueryClientProvider } from 'react-query'
 import { Toaster } from 'react-hot-toast'
 import App from './App.tsx'
 
+import { installFrontendBeadsErrorReporting } from './utils/beadsReporting'
+
 // Create a theme instance
 const theme = createTheme({
   palette: {
@@ -29,6 +31,8 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+installFrontendBeadsErrorReporting()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

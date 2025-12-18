@@ -51,6 +51,17 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 COPY --from=builder /opt/venv /opt/venv
 
+# Optional: include Beads issue tracker and CLI for local error auto-reporting.
+ARG INSTALL_BD=false
+RUN if [ "$INSTALL_BD" = "true" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends curl bash ca-certificates && \
+      rm -rf /var/lib/apt/lists/* && \
+      curl -sSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash ; \
+    fi
+
+WORKDIR /app
+COPY .beads/ ./.beads/
+
 WORKDIR /app/backend
 COPY backend/ ./
 COPY --from=frontend-build /app/frontend/dist/ /app/backend/static/
