@@ -15,6 +15,7 @@ import { Flight, Schedule, Speed } from '@mui/icons-material'
 import { PageHeader, EmptyState, LoadingState, ResultsSection } from '../components/shared'
 import FlightPlanningForm from '../components/FlightPlanningForm'
 import RouteMap from '../components/RouteMap'
+import LocalMap from '../components/LocalMap'
 import RouteLegsTable from '../components/RouteLegsTable'
 import ElevationProfile from '../components/ElevationProfile'
 import WeatherPanels from '../components/WeatherPanels'
@@ -224,6 +225,16 @@ const FlightPlannerPage: React.FC = () => {
                   </Box>
                 </CardContent>
               </Card>
+
+              <Box sx={{ mb: 2 }}>
+                <WeatherOverlayControls
+                  overlays={overlays}
+                  setOverlays={setOverlays}
+                  disabled={isLoading}
+                />
+              </Box>
+
+              <LocalMap plan={localPlan} overlays={overlays} />
             </ResultsSection>
           ) : (
             <EmptyState
