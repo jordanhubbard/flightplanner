@@ -37,7 +37,7 @@ services:
     environment:
       - BACKEND_HOST=backend
       - BACKEND_PORT=8000
-      - VITE_OPENWEATHERMAP_API_KEY=${VITE_OPENWEATHERMAP_API_KEY}
+      - VITE_OPENWEATHERMAP_API_KEY=${OPENWEATHERMAP_API_KEY:-}
     ports:
       - "3000:80"
     depends_on:
