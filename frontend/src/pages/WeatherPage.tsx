@@ -38,8 +38,8 @@ const WeatherPage: React.FC = () => {
     (airportCode) => weatherService.getWeather(airportCode),
     {
       successMessage: 'Weather data retrieved successfully!',
-      onSuccess: () => {
-        addToHistory(airport.toUpperCase(), 'weather')
+      onSuccess: (data) => {
+        addToHistory(data.airport.toUpperCase(), 'weather')
       },
     },
   )
@@ -52,9 +52,11 @@ const WeatherPage: React.FC = () => {
       return
     }
 
+    const airportCode = validation.normalized as string
+
     setValidationError('')
     setShowHistory(false)
-    weatherMutation.mutate(airport.toUpperCase())
+    weatherMutation.mutate(airportCode)
   }
 
   const handleAirportChange = (value: string) => {
@@ -82,7 +84,7 @@ const WeatherPage: React.FC = () => {
       // Auto-fetch weather for selected item
       const validation = validateAirportCode(query)
       if (validation.valid) {
-        weatherMutation.mutate(query)
+        weatherMutation.mutate((validation.normalized as string) || query)
       }
     },
     [weatherMutation],

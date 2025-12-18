@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import difflib
 import math
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.utils.data_loader import load_airports
@@ -11,8 +12,27 @@ def load_airport_cache() -> List[Dict[str, Any]]:
     return load_airports()
 
 
+def _normalize_airport_code(value: str) -> str:
+    """Extract the leading airport code from user-provided strings.
+
+    Accept inputs like "KPAO - Palo Alto Airport" and return "KPAO".
+    """
+
+    if not value:
+        return ""
+
+    before_dash = re.split(r"\s*[-–—]\s*", value.strip(), maxsplit=1)[0]
+    token = before_dash.strip().split()[0] if before_dash.strip() else ""
+    token_u = token.upper()
+
+    if re.fullmatch(r"[A-Z]{3,4}", token_u):
+        return token_u
+
+    return value.strip().upper()
+
+
 def get_airport_coordinates(code: str) -> Optional[Dict[str, Any]]:
-    code_u = code.strip().upper()
+    code_u = _normalize_airport_code(code)
 
     for airport in load_airport_cache():
         icao_code = (airport.get("icao") or airport.get("icaoCode") or "").upper()

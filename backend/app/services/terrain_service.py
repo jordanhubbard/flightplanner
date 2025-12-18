@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import math
 from functools import lru_cache
 from typing import Iterable, List, Optional, Tuple
 
@@ -63,10 +64,101 @@ def _parse_aai_grid_elevation_m(text: str) -> Optional[float]:
     return None
 
 
+def _parse_aai_grid_elevation_at_point_m(text: str, *, lat: float, lon: float) -> Optional[float]:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return None
+
+    header: dict[str, float] = {}
+    data_start = 0
+    for idx, line in enumerate(lines):
+        parts = line.split()
+        if len(parts) >= 2 and parts[0].lower() in {
+            "ncols",
+            "nrows",
+            "xllcorner",
+            "yllcorner",
+            "xllcenter",
+            "yllcenter",
+            "cellsize",
+            "nodata_value",
+        }:
+            try:
+                header[parts[0].lower()] = float(parts[1])
+            except Exception:
+                pass
+            data_start = idx + 1
+            continue
+        break
+
+    ncols = int(header.get("ncols") or 0)
+    nrows = int(header.get("nrows") or 0)
+    cellsize = float(header.get("cellsize") or 0.0)
+    nodata = header.get("nodata_value")
+
+    if ncols <= 0 or nrows <= 0 or cellsize <= 0:
+        return _parse_aai_grid_elevation_m(text)
+
+    if "xllcorner" in header:
+        xll = float(header["xllcorner"])
+        x_is_corner = True
+    elif "xllcenter" in header:
+        xll = float(header["xllcenter"])
+        x_is_corner = False
+    else:
+        return _parse_aai_grid_elevation_m(text)
+
+    if "yllcorner" in header:
+        yll = float(header["yllcorner"])
+        y_is_corner = True
+    elif "yllcenter" in header:
+        yll = float(header["yllcenter"])
+        y_is_corner = False
+    else:
+        return _parse_aai_grid_elevation_m(text)
+
+    # Compute grid indices for the requested point.
+    if x_is_corner:
+        col = int(math.floor((lon - xll) / cellsize))
+    else:
+        col = int(round((lon - xll) / cellsize))
+    col = max(0, min(ncols - 1, col))
+
+    # AAIGrid rows are ordered from north to south; y0 is south edge/center.
+    if y_is_corner:
+        row_from_south = int(math.floor((lat - yll) / cellsize))
+    else:
+        row_from_south = int(round((lat - yll) / cellsize))
+    row_from_south = max(0, min(nrows - 1, row_from_south))
+    row = (nrows - 1) - row_from_south
+
+    # Parse the value at (row, col).
+    data_row = 0
+    for line in lines[data_start:]:
+        if data_row >= nrows:
+            break
+        tokens = line.split()
+        if len(tokens) < ncols:
+            continue
+        if data_row == row:
+            try:
+                v = float(tokens[col])
+            except Exception:
+                return None
+            if nodata is not None and v == float(nodata):
+                return None
+            return v
+        data_row += 1
+
+    return None
+
+
 @lru_cache(maxsize=4096)
 def get_elevation_m(lat: float, lon: float, demtype: str = "SRTMGL1") -> Optional[float]:
     key = _api_key()
-    eps = 1e-4
+    # OpenTopography rejects extremely tiny bounding boxes; keep this small
+    # but large enough to satisfy their minimum area constraints.
+    eps = 0.005
 
     params = {
         "demtype": demtype,
@@ -78,9 +170,21 @@ def get_elevation_m(lat: float, lon: float, demtype: str = "SRTMGL1") -> Optiona
         "API_Key": key,
     }
 
-    resp = httpx.get("https://portal.opentopography.org/API/globaldem", params=params, timeout=30)
-    resp.raise_for_status()
-    return _parse_aai_grid_elevation_m(resp.text)
+    try:
+        resp = httpx.get(
+            "https://portal.opentopography.org/API/globaldem", params=params, timeout=30
+        )
+        resp.raise_for_status()
+        return _parse_aai_grid_elevation_at_point_m(resp.text, lat=lat, lon=lon)
+    except httpx.HTTPStatusError as e:
+        body = (e.response.text or "").strip()
+        if len(body) > 300:
+            body = body[:300] + "..."
+        raise TerrainServiceError(
+            f"OpenTopography request failed (HTTP {e.response.status_code}): {body or 'no response body'}"
+        ) from e
+    except httpx.RequestError as e:
+        raise TerrainServiceError(f"OpenTopography request error: {e}") from e
 
 
 def get_elevation_ft(lat: float, lon: float, demtype: str = "SRTMGL1") -> Optional[float]:

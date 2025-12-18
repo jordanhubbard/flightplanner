@@ -70,10 +70,13 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
         return
       }
 
+      const originCode = originValidation.normalized as string
+      const destinationCode = destinationValidation.normalized as string
+
       const req: RoutePlanRequest = {
         mode: 'route',
-        origin: origin.toUpperCase(),
-        destination: destination.toUpperCase(),
+        origin: originCode,
+        destination: destinationCode,
         speed,
         speed_unit: 'knots',
         altitude,
@@ -92,9 +95,11 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
       return
     }
 
+    const airportCode = airportValidation.normalized as string
+
     const req: LocalPlanRequest = {
       mode: 'local',
-      airport: airport.toUpperCase(),
+      airport: airportCode,
       radius_nm: radiusNm,
     }
     onSubmit(req)

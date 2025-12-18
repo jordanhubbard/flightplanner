@@ -44,6 +44,37 @@ COPY --from=builder /opt/venv /opt/venv
 WORKDIR /app/backend
 COPY backend/ ./
 
+# Railway does not fetch Git LFS objects during builds. Our data caches live in
+# backend/data and are tracked via LFS, so we download the real files if the
+# checkout contains LFS pointer files.
+RUN python - <<'PY'
+from __future__ import annotations
+
+import pathlib
+import urllib.request
+
+files = {
+    'data/airports_cache.json': 'https://media.githubusercontent.com/media/jordanhubbard/flightplanner/main/backend/data/airports_cache.json',
+    'data/airspaces_us.json': 'https://media.githubusercontent.com/media/jordanhubbard/flightplanner/main/backend/data/airspaces_us.json',
+    'data/airspace_cache.json': 'https://media.githubusercontent.com/media/jordanhubbard/flightplanner/main/backend/data/airspace_cache.json',
+}
+
+for rel_path, url in files.items():
+    path = pathlib.Path(rel_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    needs_download = True
+    if path.exists():
+        try:
+            head = path.read_text('utf-8', errors='ignore')[:200]
+            needs_download = head.startswith('version https://git-lfs.github.com/spec')
+        except Exception:
+            needs_download = True
+
+    if needs_download:
+        print(f'Downloading {rel_path}...')
+        urllib.request.urlretrieve(url, path)
+PY
+
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
