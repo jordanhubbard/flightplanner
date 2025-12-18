@@ -67,7 +67,11 @@ const RouteMap: React.FC<Props> = ({ plan, overlays }) => {
       className: '',
       iconSize: [40, 40],
       iconAnchor: [20, 20],
-      html: windBarbSvg(direction, speed, { size: 40 }),
+      html: windBarbSvg(direction, speed, {
+        size: 40,
+        backgroundFill: '#ffffff',
+        backgroundStroke: '#111111',
+      }),
     })
   }
 

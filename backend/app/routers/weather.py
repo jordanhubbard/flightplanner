@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List, Tuple
+
 from fastapi import APIRouter, HTTPException
 
 from app.models.airport import get_airport_coordinates
@@ -17,9 +19,56 @@ from app.services import flight_recommendations
 from app.services import metar
 from app.services import open_meteo
 from app.services import openweathermap
+from app.services.xctry_route_planner import haversine_nm
 
 
 router = APIRouter()
+
+
+def _resample_route_points(
+    points: List[Tuple[float, float]], *, max_points: int
+) -> List[Tuple[float, float]]:
+    if len(points) <= 1:
+        return points
+
+    if max_points <= 2:
+        return [points[0], points[-1]]
+
+    cumulative: List[float] = [0.0]
+    for i in range(len(points) - 1):
+        lat1, lon1 = points[i]
+        lat2, lon2 = points[i + 1]
+        cumulative.append(cumulative[-1] + haversine_nm(lat1, lon1, lat2, lon2))
+
+    total = cumulative[-1]
+    if total <= 0:
+        return [points[0], points[-1]]
+
+    out: List[Tuple[float, float]] = []
+    seg_idx = 0
+    for k in range(max_points):
+        target = total * (k / (max_points - 1))
+        while seg_idx < len(cumulative) - 2 and cumulative[seg_idx + 1] < target:
+            seg_idx += 1
+
+        seg_start = cumulative[seg_idx]
+        seg_end = cumulative[seg_idx + 1]
+        seg_len = seg_end - seg_start
+        if seg_len <= 0:
+            out.append(points[seg_idx])
+            continue
+
+        f = (target - seg_start) / seg_len
+        lat1, lon1 = points[seg_idx]
+        lat2, lon2 = points[seg_idx + 1]
+        out.append((lat1 + f * (lat2 - lat1), lon1 + f * (lon2 - lon1)))
+
+    # Drop consecutive duplicates (can happen if segments have 0 length).
+    deduped: List[Tuple[float, float]] = []
+    for pt in out:
+        if not deduped or pt != deduped[-1]:
+            deduped.append(pt)
+    return deduped
 
 
 @router.post(
@@ -45,8 +94,7 @@ def weather_route(req: RouteWeatherRequest) -> RouteWeatherResponse:
         raise HTTPException(status_code=400, detail="points cannot be empty")
 
     max_points = max(1, min(int(req.max_points), 50))
-    step = max(1, (len(req.points) + max_points - 1) // max_points)
-    sampled = req.points[::step]
+    sampled = _resample_route_points(list(req.points), max_points=max_points)
 
     out: list[RouteWeatherPoint] = []
     for lat, lon in sampled:
