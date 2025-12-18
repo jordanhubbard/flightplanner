@@ -1,4 +1,5 @@
 server {
+  listen [::]:${PORT};
   listen ${PORT};
   server_name _;
 
