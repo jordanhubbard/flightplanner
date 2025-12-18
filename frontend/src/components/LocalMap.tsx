@@ -9,6 +9,7 @@ import 'leaflet/dist/leaflet.css'
 import { useRouteWeather } from '../hooks'
 import { weatherService } from '../services'
 import { getRuntimeEnv } from '../utils'
+import { windBarbSvg } from '../utils/windBarb'
 import type { FlightCategory, LocalPlanResponse, WeatherData } from '../types'
 import type { WeatherOverlayKey, WeatherOverlays } from './WeatherOverlayControls'
 
@@ -153,37 +154,11 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
   const owmKey = getRuntimeEnv('VITE_OPENWEATHERMAP_API_KEY')
 
   const windIcon = (direction: number, speed: number) => {
-    const rot = Number.isFinite(direction) ? direction : 0
-    const spd = Number.isFinite(speed) ? Math.round(speed) : 0
-
     return L.divIcon({
       className: '',
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
-      html: `
-        <div style="
-          width: 30px;
-          height: 30px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transform: rotate(${rot}deg);
-          font-size: 18px;
-          line-height: 1;
-          color: #111;
-          text-shadow: 0 0 2px rgba(255,255,255,0.9);
-        ">
-          ↑
-        </div>
-        <div style="
-          position: relative;
-          top: -26px;
-          left: 16px;
-          font-size: 10px;
-          color: #111;
-          text-shadow: 0 0 2px rgba(255,255,255,0.9);
-        ">${spd}</div>
-      `,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      html: windBarbSvg(direction, speed, { size: 40 }),
     })
   }
 
