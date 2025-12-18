@@ -17,10 +17,7 @@ export const weatherService = {
     const config: AxiosRequestConfig | undefined = opts?.suppressToast
       ? ({ suppressToast: true } as unknown as AxiosRequestConfig)
       : undefined
-    const response = await apiClient.get<WeatherData>(
-      `/weather/${airport}`,
-      config,
-    )
+    const response = await apiClient.get<WeatherData>(`/weather/${airport}`, config)
     return response.data
   },
 
