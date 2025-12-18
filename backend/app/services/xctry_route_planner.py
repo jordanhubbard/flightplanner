@@ -112,7 +112,10 @@ def avoid_airspaces(
                 offset_lat = closest.y + buffer_nm * 0.0167
                 offset_lon = closest.x + buffer_nm * 0.0167
                 new_points.append((offset_lat, offset_lon))
-                new_points.append(route_points[i + 1])
+
+                # Preserve the remaining route points (including the destination).
+                # Without this, repeated iterations can truncate the route and drop the destination.
+                new_points.extend(route_points[i + 1 :])
                 changed = True
                 break
 
@@ -122,7 +125,13 @@ def avoid_airspaces(
             route_points = new_points
         iter_count += 1
 
-    return route_points
+    # Drop consecutive duplicate points to avoid zero-length legs.
+    deduped: List[Tuple[float, float]] = []
+    for pt in route_points:
+        if not deduped or pt != deduped[-1]:
+            deduped.append(pt)
+
+    return deduped
 
 
 def _build_segments(
