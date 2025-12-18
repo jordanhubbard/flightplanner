@@ -32,6 +32,11 @@ class Settings(BaseSettings):
         description="OpenWeatherMap API key",
         validation_alias=AliasChoices("OPENWEATHERMAP_API_KEY", "OPENWEATHER_API_KEY"),
     )
+    opentopography_api_key: Optional[str] = Field(
+        None,
+        description="OpenTopography API key (for terrain/elevation requests)",
+        validation_alias=AliasChoices("OPENTOPOGRAPHY_API_KEY"),
+    )
     openaip_api_key: Optional[str] = Field(None, description="OpenAIP API key")
 
     data_dir: str = Field(str(REPO_ROOT / "backend" / "data"), description="Data directory")

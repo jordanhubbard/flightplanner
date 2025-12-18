@@ -13,7 +13,7 @@ class OpenWeatherMapError(RuntimeError):
 
 
 def _api_key() -> str:
-    key = os.environ.get("OPENWEATHERMAP_API_KEY")
+    key = os.environ.get("OPENWEATHERMAP_API_KEY") or os.environ.get("OPENWEATHER_API_KEY")
     if not key:
         raise OpenWeatherMapError("Missing OPENWEATHERMAP_API_KEY for OpenWeatherMap requests")
     return key

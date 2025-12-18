@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,14 +15,33 @@ from slowapi.util import get_remote_address
 from app.config import Settings
 from app.openapi import APP_DESCRIPTION, OPENAPI_TAGS
 from app.routers import airspace, airports, health, local, plan, route, terrain, weather
+from app.startup_checks import collect_startup_config_issues
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    yield
+logger = logging.getLogger(__name__)
 
 
 def create_app(settings: Settings) -> FastAPI:
+    if settings.openweather_api_key and not (
+        os.environ.get("OPENWEATHERMAP_API_KEY") or os.environ.get("OPENWEATHER_API_KEY")
+    ):
+        os.environ.setdefault("OPENWEATHERMAP_API_KEY", settings.openweather_api_key)
+
+    if settings.opentopography_api_key and not os.environ.get("OPENTOPOGRAPHY_API_KEY"):
+        os.environ.setdefault("OPENTOPOGRAPHY_API_KEY", settings.opentopography_api_key)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        issues = collect_startup_config_issues()
+        app.state.startup_config_issues = issues
+        for issue in issues:
+            missing = ", ".join(issue.get("missing") or [])
+            feature = issue.get("feature") or "unknown feature"
+            logger.warning("Startup config: missing %s (%s)", missing, feature)
+            for step in issue.get("remediation") or []:
+                logger.warning("  - %s", step)
+        yield
+
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
