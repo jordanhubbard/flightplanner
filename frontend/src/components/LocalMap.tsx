@@ -153,12 +153,18 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
 
   const owmKey = getRuntimeEnv('VITE_OPENWEATHERMAP_API_KEY')
 
-  const windIcon = (direction: number, speed: number) => {
+  const windIcon = (direction: number, speed: number, category: FlightCategory) => {
+    const colors = CATEGORY_COLORS[category]
+
     return L.divIcon({
       className: '',
       iconSize: [40, 40],
       iconAnchor: [20, 20],
-      html: windBarbSvg(direction, speed, { size: 40 }),
+      html: windBarbSvg(direction, speed, {
+        size: 40,
+        backgroundFill: colors.fill,
+        backgroundStroke: colors.stroke,
+      }),
     })
   }
 
@@ -205,11 +211,14 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
             .map((p) => {
               const k = `${p.latitude.toFixed(6)},${p.longitude.toFixed(6)}`
               const label = stationLabelByKey.get(k)
+              const code = label ? label.toUpperCase() : undefined
+              const weather = code ? weatherByCode.get(code) : undefined
+              const category = toCategory(weather?.flight_category ?? null)
               return (
                 <Marker
                   key={k}
                   position={[p.latitude, p.longitude]}
-                  icon={windIcon(p.wind_direction as number, p.wind_speed_kt as number)}
+                  icon={windIcon(p.wind_direction as number, p.wind_speed_kt as number, category)}
                 >
                   <Popup>
                     {label ? `${label}: ` : ''}

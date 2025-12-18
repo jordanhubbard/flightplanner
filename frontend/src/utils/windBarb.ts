@@ -1,5 +1,7 @@
 type WindBarbOptions = {
   size?: number
+  backgroundFill?: string
+  backgroundStroke?: string
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
@@ -27,6 +29,9 @@ const polygon = (points: Array<[number, number]>) => {
 export const windBarbSvg = (directionDeg: number, speedKt: number, opts: WindBarbOptions = {}) => {
   const size = clamp(Math.round(opts.size ?? 40), 24, 64)
 
+  const bgFill = opts.backgroundFill
+  const bgStroke = opts.backgroundStroke ?? '#ffffff'
+
   const dir = Number.isFinite(directionDeg) ? directionDeg : 0
   const spd = Number.isFinite(speedKt) ? speedKt : 0
   const rounded = Math.max(0, Math.round(spd / 5) * 5)
@@ -35,10 +40,15 @@ export const windBarbSvg = (directionDeg: number, speedKt: number, opts: WindBar
   const cy = 20
   const endY = 4
 
+  const background = bgFill
+    ? `<circle cx="${cx}" cy="${cy}" r="10" fill="${bgFill}" stroke="${bgStroke}" stroke-width="3" opacity="0.95" />`
+    : ''
+
   if (rounded < 3) {
     return `
       <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 40 40">
         <g>
+          ${background}
           <circle cx="${cx}" cy="${cy}" r="7" fill="#fff" stroke="#111" stroke-width="2" />
         </g>
       </svg>
@@ -88,6 +98,7 @@ export const windBarbSvg = (directionDeg: number, speedKt: number, opts: WindBar
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 40 40">
+      ${background}
       <g transform="rotate(${dir} ${cx} ${cy})">
         ${staff}
         ${shapes}
