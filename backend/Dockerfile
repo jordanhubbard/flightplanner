@@ -88,4 +88,7 @@ PY
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn main:app --host :: --port ${PORT:-8000}"]
+# Bind to IPv4 by default for Railway compatibility; can be overridden (e.g. UVICORN_HOST=::).
+ENV UVICORN_HOST=0.0.0.0
+
+CMD ["sh", "-c", "uvicorn main:app --host ${UVICORN_HOST:-0.0.0.0} --port ${PORT:-8000}"]
