@@ -91,10 +91,6 @@ export const windBarbSvg = (directionDeg: number, speedKt: number, opts: WindBar
   }
 
   const staff = line(cx, cy, cx, endY)
-  const station = [
-    `<circle cx="${cx}" cy="${cy}" r="3.5" fill="#fff" stroke="#fff" stroke-width="4" />`,
-    `<circle cx="${cx}" cy="${cy}" r="3.5" fill="#fff" stroke="#111" stroke-width="2" />`,
-  ].join('')
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 40 40">
@@ -102,7 +98,6 @@ export const windBarbSvg = (directionDeg: number, speedKt: number, opts: WindBar
       <g transform="rotate(${dir} ${cx} ${cy})">
         ${staff}
         ${shapes}
-        ${station}
       </g>
     </svg>
   `.trim()
