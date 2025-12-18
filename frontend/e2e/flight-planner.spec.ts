@@ -78,10 +78,25 @@ test('plan a route and a local flight', async ({ page }) => {
 
   await page.goto('/')
 
+  const routePlanResponsePromise = page.waitForResponse(
+    (resp) => resp.url().includes('/api/plan') && resp.request().method() === 'POST',
+    { timeout: 60_000 },
+  )
+
   await page.getByLabel('Origin').fill('KSFO')
   await page.getByLabel('Destination').fill('KOAK')
   await page.getByRole('button', { name: 'Plan Route' }).click()
-  await expect(page.getByRole('heading', { name: 'Route Results' })).toBeVisible()
+
+  const routePlanResponse = await routePlanResponsePromise
+  const routePlanRequestBody = routePlanResponse.request().postDataJSON() as {
+    mode?: string
+  } | null
+  expect(routePlanRequestBody?.mode).toBe('route')
+  expect(routePlanResponse.status()).toBe(200)
+
+  await expect(page.getByRole('heading', { name: 'Route Results' })).toBeVisible({
+    timeout: 15_000,
+  })
   await expect(page.getByText(/Route:\s+KSFO/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Local Flight' }).click()
