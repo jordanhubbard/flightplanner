@@ -2,12 +2,14 @@ import React, { useMemo } from 'react'
 import { Box, useMediaQuery } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { MapContainer, TileLayer, Circle, CircleMarker, Marker, Popup, useMap } from 'react-leaflet'
+import { useQueries } from 'react-query'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 import { useRouteWeather } from '../hooks'
+import { weatherService } from '../services'
 import { getRuntimeEnv } from '../utils'
-import type { LocalPlanResponse } from '../types'
+import type { FlightCategory, LocalPlanResponse, WeatherData } from '../types'
 import type { WeatherOverlayKey, WeatherOverlays } from './WeatherOverlayControls'
 
 type Props = {
@@ -35,6 +37,19 @@ const FitBounds: React.FC<{ points: Array<[number, number]> }> = ({ points }) =>
 }
 
 const nmToMeters = (nm: number) => nm * 1852
+
+const CATEGORY_COLORS: Record<FlightCategory, { fill: string; stroke: string }> = {
+  VFR: { fill: '#2e7d32', stroke: '#ffffff' },
+  MVFR: { fill: '#1976d2', stroke: '#ffffff' },
+  IFR: { fill: '#d32f2f', stroke: '#ffffff' },
+  LIFR: { fill: '#8e24aa', stroke: '#ffffff' },
+  UNKNOWN: { fill: '#9e9e9e', stroke: '#ffffff' },
+}
+
+const toCategory = (value: string | null | undefined): FlightCategory => {
+  if (value === 'VFR' || value === 'MVFR' || value === 'IFR' || value === 'LIFR') return value
+  return 'UNKNOWN'
+}
 
 const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
   const theme = useTheme()
@@ -89,6 +104,51 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
   }, [stationMarkers])
 
   const stationWeather = useRouteWeather(stationPoints, stationPoints.length, windBarbsEnabled)
+
+  const weatherStations = useMemo(() => {
+    const out: Array<{ code: string; lat: number; lon: number; name?: string | null }> = []
+    const seen = new Set<string>()
+
+    const centerCode = (plan.center.icao || plan.center.iata || '').toUpperCase()
+    if (centerCode) {
+      out.push({
+        code: centerCode,
+        lat: plan.center.latitude,
+        lon: plan.center.longitude,
+        name: plan.center.name,
+      })
+      seen.add(centerCode)
+    }
+
+    for (const ap of plan.nearby_airports.slice(0, 25)) {
+      const code = (ap.icao || ap.iata || '').toUpperCase()
+      if (!code || seen.has(code)) continue
+      out.push({ code, lat: ap.latitude, lon: ap.longitude, name: ap.name })
+      seen.add(code)
+    }
+
+    return out
+  }, [plan.center, plan.nearby_airports])
+
+  const stationWeatherQueries = useQueries(
+    weatherStations.map((s) => ({
+      queryKey: ['weather', s.code],
+      queryFn: () => weatherService.getWeather(s.code),
+      enabled: Boolean(s.code),
+      staleTime: 5 * 60 * 1000,
+      retry: 0,
+    })),
+  ) as Array<{ data?: WeatherData }>
+
+  const weatherByCode = useMemo(() => {
+    const m = new Map<string, WeatherData>()
+    for (let i = 0; i < weatherStations.length; i++) {
+      const code = weatherStations[i]?.code
+      const data = stationWeatherQueries[i]?.data
+      if (code && data) m.set(code, data)
+    }
+    return m
+  }, [stationWeatherQueries, weatherStations])
 
   const owmKey = getRuntimeEnv('VITE_OPENWEATHERMAP_API_KEY')
 
@@ -196,18 +256,32 @@ const LocalMap: React.FC<Props> = ({ plan, overlays }) => {
           </Popup>
         </CircleMarker>
 
-        {plan.nearby_airports.slice(0, 60).map((ap) => (
-          <CircleMarker
-            key={ap.icao || ap.iata}
-            center={[ap.latitude, ap.longitude]}
-            radius={5}
-            pathOptions={{ color: '#6d6d6d' }}
-          >
-            <Popup>
-              {ap.icao || ap.iata} — {ap.name || ap.city} ({ap.distance_nm.toFixed(1)} nm)
-            </Popup>
-          </CircleMarker>
-        ))}
+        {plan.nearby_airports.slice(0, 60).map((ap) => {
+          const code = (ap.icao || ap.iata || '').toUpperCase()
+          const weather = code ? weatherByCode.get(code) : undefined
+          const cat = toCategory(weather?.flight_category ?? null)
+          const colors = CATEGORY_COLORS[cat]
+
+          return (
+            <CircleMarker
+              key={code || `${ap.latitude}-${ap.longitude}`}
+              center={[ap.latitude, ap.longitude]}
+              radius={6}
+              pathOptions={{
+                color: colors.stroke,
+                weight: 2,
+                fillColor: colors.fill,
+                fillOpacity: 0.95,
+              }}
+            >
+              <Popup>
+                {code || 'Airport'} — {ap.name || ap.city} ({ap.distance_nm.toFixed(1)} nm)
+                <br />
+                Category: {weather?.flight_category || 'UNKNOWN'}
+              </Popup>
+            </CircleMarker>
+          )
+        })}
       </MapContainer>
     </Box>
   )
