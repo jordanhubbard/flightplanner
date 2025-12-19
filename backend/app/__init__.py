@@ -89,6 +89,11 @@ def create_app(settings: Settings) -> FastAPI:
     )
 
     app.include_router(health.router, prefix=settings.api_prefix, tags=["health"])
+
+    @app.get("/health", include_in_schema=False)
+    def root_health(request: Request) -> dict:
+        return health.health(request)
+
     app.include_router(beads.router, prefix=settings.api_prefix, tags=["beads"])
     app.include_router(plan.router, prefix=settings.api_prefix, tags=["plan"])
     app.include_router(airports.router, prefix=settings.api_prefix, tags=["airports"])
