@@ -20,6 +20,7 @@ import RouteLegsTable from '../components/RouteLegsTable'
 import ElevationProfile from '../components/ElevationProfile'
 import WeatherPanels from '../components/WeatherPanels'
 import AlternateAirports from '../components/AlternateAirports'
+import RouteWaypointWeatherTable from '../components/RouteWaypointWeatherTable'
 import WeatherOverlayControls, { type WeatherOverlays } from '../components/WeatherOverlayControls'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
@@ -166,6 +167,12 @@ const FlightPlannerPage: React.FC = () => {
                       </Grid>
                     )}
                   </Grid>
+                </CardContent>
+              </Card>
+
+              <Card sx={{ mb: 2 }}>
+                <CardContent>
+                  <RouteWaypointWeatherTable plan={routePlan} />
                 </CardContent>
               </Card>
 
