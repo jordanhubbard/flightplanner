@@ -10,8 +10,10 @@ import {
   Alert,
   Button,
   Paper,
+  LinearProgress,
 } from '@mui/material'
 import { Flight, Schedule, Speed } from '@mui/icons-material'
+import toast from 'react-hot-toast'
 import { PageHeader, EmptyState, LoadingState, ResultsSection } from '../components/shared'
 import FlightPlanningForm from '../components/FlightPlanningForm'
 import RouteMap from '../components/RouteMap'
@@ -42,12 +44,16 @@ const FlightPlannerPage: React.FC = () => {
     temperature: { enabled: false, opacity: 0.6 },
   })
 
-  const routePlanMutation = useApiMutation<FlightPlan, RoutePlanRequest>(
-    (data) => flightPlannerService.plan<FlightPlan>(data),
-    {
-      successMessage: 'Route planned successfully!',
-    },
-  )
+  const [routePlan, setRoutePlan] = useState<FlightPlan | null>(null)
+  const [partialRoutePlan, setPartialRoutePlan] = useState<FlightPlan | null>(null)
+  const [routeStreamProgress, setRouteStreamProgress] = useState<
+    Array<{ phase?: string | null; message?: string | null; percent?: number | null }>
+  >([])
+  const [routeStreamError, setRouteStreamError] = useState<Error | null>(null)
+  const [routeStreamMessage, setRouteStreamMessage] = useState<string | null>(null)
+  const [routeStreamPercent, setRouteStreamPercent] = useState<number | null>(null)
+  const [routeAbortController, setRouteAbortController] = useState<AbortController | null>(null)
+  const [isRouteStreaming, setIsRouteStreaming] = useState(false)
 
   const localPlanMutation = useApiMutation<LocalPlanResponse, LocalPlanRequest>(
     (data) => flightPlannerService.plan<LocalPlanResponse>(data),
@@ -56,22 +62,77 @@ const FlightPlannerPage: React.FC = () => {
     },
   )
 
-  const isLoading = routePlanMutation.isLoading || localPlanMutation.isLoading
-  const error = routePlanMutation.error || localPlanMutation.error
+  const isLoading = isRouteStreaming || localPlanMutation.isLoading
+  const error = routeStreamError || localPlanMutation.error
+
+  const cancelRoutePlanning = () => {
+    routeAbortController?.abort()
+    setIsRouteStreaming(false)
+  }
+
+  const startRoutePlanningStream = async (req: RoutePlanRequest) => {
+    routeAbortController?.abort()
+
+    const controller = new AbortController()
+    setRouteAbortController(controller)
+    setRouteStreamError(null)
+    setRouteStreamProgress([])
+    setRouteStreamMessage('Starting...')
+    setRouteStreamPercent(null)
+    setPartialRoutePlan(null)
+    setRoutePlan(null)
+    setIsRouteStreaming(true)
+
+    try {
+      await flightPlannerService.planStream<FlightPlan>(
+        req,
+        {
+          onProgress: (ev) => {
+            setRouteStreamProgress((prev) => {
+              const next = [...prev, ev]
+              return next.length > 100 ? next.slice(-100) : next
+            })
+            if (ev.message) setRouteStreamMessage(ev.message)
+            if (typeof ev.percent === 'number') setRouteStreamPercent(ev.percent)
+          },
+          onPartialPlan: (plan) => {
+            setPartialRoutePlan(plan)
+          },
+          onDone: (plan) => {
+            setRoutePlan(plan)
+            setPartialRoutePlan(null)
+            setIsRouteStreaming(false)
+            toast.success('Route planned successfully!')
+          },
+          onError: (ev) => {
+            setIsRouteStreaming(false)
+            setRouteStreamError(new Error(ev.detail || `Request failed (${ev.status_code || 500})`))
+          },
+        },
+        controller.signal,
+      )
+    } catch (e) {
+      setIsRouteStreaming(false)
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        return
+      }
+      setRouteStreamError(e instanceof Error ? e : new Error('Request failed'))
+    }
+  }
 
   const planFlight = (req: FlightPlanRequest) => {
     setLastRequest(req)
     setLastMode(req.mode)
     if (req.mode === 'route') {
-      routePlanMutation.mutate(req)
+      void startRoutePlanningStream(req)
       return
     }
 
     localPlanMutation.mutate(req)
   }
 
-  const routePlan = routePlanMutation.data
   const localPlan = localPlanMutation.data
+  const displayedRoutePlan = routePlan || partialRoutePlan
 
   return (
     <Box>
@@ -83,11 +144,7 @@ const FlightPlannerPage: React.FC = () => {
         </Grid>
 
         <Grid item xs={12} md={8}>
-          {isLoading ? (
-            <LoadingState
-              message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'}
-            />
-          ) : error ? (
+          {error ? (
             <Paper sx={{ p: 3 }} role="alert">
               <Alert
                 severity="error"
@@ -105,16 +162,45 @@ const FlightPlannerPage: React.FC = () => {
                 {error.message || 'Request failed. Please try again.'}
               </Alert>
             </Paper>
-          ) : lastMode === 'route' && routePlan ? (
+          ) : lastMode === 'route' && displayedRoutePlan ? (
             <ResultsSection title="Route Results">
+              {isRouteStreaming ? (
+                <Paper sx={{ p: 2, mb: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Planning route...
+                  </Typography>
+                  <LinearProgress
+                    variant={routeStreamPercent != null ? 'determinate' : 'indeterminate'}
+                    value={routeStreamPercent != null ? Math.round(routeStreamPercent * 100) : 0}
+                    sx={{ mb: 1 }}
+                  />
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {routeStreamMessage || 'Working...'}
+                  </Typography>
+
+                  {routeStreamProgress.length ? (
+                    <Box sx={{ mb: 1 }}>
+                      {routeStreamProgress.slice(-5).map((p, idx) => (
+                        <Typography key={idx} variant="caption" display="block" color="text.secondary">
+                          {p.message}
+                        </Typography>
+                      ))}
+                    </Box>
+                  ) : null}
+                  <Button variant="outlined" size="small" onClick={cancelRoutePlanning}>
+                    Cancel
+                  </Button>
+                </Paper>
+              ) : null}
+
               <Card sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography variant="subtitle1" gutterBottom>
-                    Route: {routePlan.route.join(' → ')}
+                    Route: {displayedRoutePlan.route.join(' → ')}
                   </Typography>
 
                   <Box sx={{ mb: 2 }}>
-                    {routePlan.route.map((waypoint, index) => (
+                    {displayedRoutePlan.route.map((waypoint, index) => (
                       <Chip
                         key={index}
                         label={waypoint}
@@ -132,7 +218,7 @@ const FlightPlannerPage: React.FC = () => {
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Speed sx={{ mr: 1, fontSize: 20 }} />
                         <Typography variant="body2">
-                          Distance: {routePlan.distance_nm} nm
+                          Distance: {displayedRoutePlan.distance_nm} nm
                         </Typography>
                       </Box>
                     </Grid>
@@ -140,28 +226,30 @@ const FlightPlannerPage: React.FC = () => {
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Schedule sx={{ mr: 1, fontSize: 20 }} />
-                        <Typography variant="body2">Time: {routePlan.time_hr} hr</Typography>
+                        <Typography variant="body2">
+                          Time: {displayedRoutePlan.time_hr} hr
+                        </Typography>
                       </Box>
                     </Grid>
 
-                    {routePlan.groundspeed_kt != null && (
+                    {displayedRoutePlan.groundspeed_kt != null && (
                       <Grid item xs={6}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <Speed sx={{ mr: 1, fontSize: 20 }} />
                           <Typography variant="body2">
-                            Groundspeed: {routePlan.groundspeed_kt} kt
+                            Groundspeed: {displayedRoutePlan.groundspeed_kt} kt
                           </Typography>
                         </Box>
                       </Grid>
                     )}
 
-                    {routePlan.headwind_kt != null && (
+                    {displayedRoutePlan.headwind_kt != null && (
                       <Grid item xs={6}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           <Speed sx={{ mr: 1, fontSize: 20 }} />
                           <Typography variant="body2">
-                            {routePlan.headwind_kt >= 0 ? 'Headwind' : 'Tailwind'}:{' '}
-                            {Math.abs(routePlan.headwind_kt)} kt
+                            {displayedRoutePlan.headwind_kt >= 0 ? 'Headwind' : 'Tailwind'}:{' '}
+                            {Math.abs(displayedRoutePlan.headwind_kt)} kt
                           </Typography>
                         </Box>
                       </Grid>
@@ -170,11 +258,13 @@ const FlightPlannerPage: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card sx={{ mb: 2 }}>
-                <CardContent>
-                  <RouteWaypointWeatherTable plan={routePlan} />
-                </CardContent>
-              </Card>
+              {!isRouteStreaming ? (
+                <Card sx={{ mb: 2 }}>
+                  <CardContent>
+                    <RouteWaypointWeatherTable plan={displayedRoutePlan} />
+                  </CardContent>
+                </Card>
+              ) : null}
 
               <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
                 <Grid item xs={12} md={4}>
@@ -186,32 +276,38 @@ const FlightPlannerPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12} md={8}>
-                  <RouteMap plan={routePlan} overlays={overlays} />
+                  <RouteMap plan={displayedRoutePlan} overlays={overlays} />
                 </Grid>
               </Grid>
 
               <Card sx={{ mb: 2 }}>
                 <CardContent>
-                  <RouteLegsTable plan={routePlan} />
+                  <RouteLegsTable plan={displayedRoutePlan} />
                 </CardContent>
               </Card>
 
-              <Card sx={{ mb: 2 }}>
-                <CardContent>
-                  <ElevationProfile plan={routePlan} />
-                </CardContent>
-              </Card>
-
-              <Card sx={{ mb: 2 }}>
-                <CardContent>
-                  <WeatherPanels airports={routePlan.route} />
-                </CardContent>
-              </Card>
-
-              {routePlan.alternates && routePlan.alternates.length > 0 ? (
+              {!isRouteStreaming ? (
                 <Card sx={{ mb: 2 }}>
                   <CardContent>
-                    <AlternateAirports alternates={routePlan.alternates} />
+                    <ElevationProfile plan={displayedRoutePlan} />
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {!isRouteStreaming ? (
+                <Card sx={{ mb: 2 }}>
+                  <CardContent>
+                    <WeatherPanels airports={displayedRoutePlan.route} />
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              {!isRouteStreaming &&
+              displayedRoutePlan.alternates &&
+              displayedRoutePlan.alternates.length > 0 ? (
+                <Card sx={{ mb: 2 }}>
+                  <CardContent>
+                    <AlternateAirports alternates={displayedRoutePlan.alternates} />
                   </CardContent>
                 </Card>
               ) : null}
@@ -252,10 +348,47 @@ const FlightPlannerPage: React.FC = () => {
               </Grid>
             </ResultsSection>
           ) : (
-            <EmptyState
-              icon={<Flight />}
-              message="Select a planning mode and enter details to generate a plan"
-            />
+            <>
+              {isLoading ? (
+                lastMode === 'route' && isRouteStreaming ? (
+                  <Paper sx={{ p: 3 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Planning route...
+                    </Typography>
+                    <LinearProgress
+                      variant={routeStreamPercent != null ? 'determinate' : 'indeterminate'}
+                      value={routeStreamPercent != null ? Math.round(routeStreamPercent * 100) : 0}
+                      sx={{ mb: 1 }}
+                    />
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      {routeStreamMessage || 'Working...'}
+                    </Typography>
+
+                    {routeStreamProgress.length ? (
+                      <Box sx={{ mb: 1 }}>
+                        {routeStreamProgress.slice(-5).map((p, idx) => (
+                          <Typography key={idx} variant="caption" display="block" color="text.secondary">
+                            {p.message}
+                          </Typography>
+                        ))}
+                      </Box>
+                    ) : null}
+                    <Button variant="outlined" size="small" onClick={cancelRoutePlanning}>
+                      Cancel
+                    </Button>
+                  </Paper>
+                ) : (
+                  <LoadingState
+                    message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'}
+                  />
+                )
+              ) : (
+                <EmptyState
+                  icon={<Flight />}
+                  message="Select a planning mode and enter details to generate a plan"
+                />
+              )}
+            </>
           )}
         </Grid>
       </Grid>

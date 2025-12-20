@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import logging
 import time
-from typing import List, Literal
+from typing import Any, List, Literal, Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -11,6 +12,16 @@ from app.schemas.route import RouteRequest, RouteResponse, Segment
 from app.services import a_star
 from app.services.alternates import recommend_alternates
 from app.services import open_meteo
+from app.services.planning_runtime import (
+    PlanningCancelled,
+    PlanningCapacityError,
+    PlanningContext,
+    PlanningTimeout,
+    planning_capacity,
+    planning_external_workers,
+    planning_phase_timeout_s,
+    planning_total_timeout_s,
+)
 from app.services import terrain_service
 from app.services import wind
 from app.services.xctry_route_planner import haversine_nm, plan_route
@@ -46,11 +57,55 @@ logger = logging.getLogger(__name__)
 )
 def calculate_route(req: RouteRequest) -> RouteResponse:
     """Plan a route between two airports."""
+    ctx = PlanningContext(deadline_s=time.perf_counter() + planning_total_timeout_s())
+    try:
+        with planning_capacity():
+            return calculate_route_internal(req, ctx=ctx)
+    except PlanningCapacityError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except PlanningTimeout as e:
+        raise HTTPException(status_code=504, detail=str(e))
+    except PlanningCancelled:
+        raise HTTPException(status_code=499, detail="Client disconnected")
+
+
+def _build_segments(planned_segments) -> List[Segment]:
+    segments: List[Segment] = []
+    for idx, seg in enumerate(planned_segments):
+        seg_type: Literal["climb", "cruise", "descent"] = "cruise"
+        if idx == 0:
+            seg_type = "climb"
+        if idx == len(planned_segments) - 1:
+            seg_type = "descent" if len(planned_segments) > 1 else seg_type
+
+        segments.append(
+            Segment(
+                start=seg.start,
+                end=seg.end,
+                type=seg_type,
+                vfr_altitude=seg.vfr_altitude_ft,
+            )
+        )
+    return segments
+
+
+def calculate_route_internal(
+    req: RouteRequest, *, ctx: Optional[PlanningContext] = None
+) -> RouteResponse:
+    """Internal route planning implementation with optional progress/cancellation support."""
     t_total = time.perf_counter()
     timings: dict[str, float] = {}
 
+    if ctx is None:
+        ctx = PlanningContext(deadline_s=time.perf_counter() + planning_total_timeout_s())
+
+    phase_timeout_s = planning_phase_timeout_s()
+
     def _mark(key: str, t0: float) -> None:
         timings[key] = round(time.perf_counter() - t0, 4)
+
+    ctx.emit_progress(phase="start", message="Starting route planning", percent=0.0)
+    ctx.check_deadline()
 
     t0 = time.perf_counter()
     origin = get_airport_coordinates(req.origin)
@@ -58,6 +113,10 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
     _mark("airport_lookup", t0)
     if not origin or not dest:
         raise HTTPException(status_code=400, detail="Invalid origin or destination code")
+
+    ctx.emit_progress(phase="airport_lookup", message="Airports resolved", percent=0.05)
+    ctx.check_deadline()
+    ctx.check_cancelled()
 
     o_lat = origin["latitude"]
     o_lon = origin["longitude"]
@@ -69,6 +128,9 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
     route_codes = [req.origin.upper(), req.destination.upper()]
     if req.plan_fuel_stops or req.aircraft_range_nm is not None:
         t0 = time.perf_counter()
+        ctx.emit_progress(phase="fuel_stops", message="Searching fuel stops", percent=0.12)
+        ctx.check_deadline()
+        ctx.check_cancelled()
 
         max_leg = None
         if req.aircraft_range_nm is not None:
@@ -134,13 +196,25 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
             raise HTTPException(status_code=400, detail=str(e))
 
         _mark("fuel_stop_search", t0)
+        ctx.emit_progress(phase="fuel_stops", message="Fuel stop search complete", percent=0.18)
+        ctx.check_deadline()
+        ctx.check_cancelled()
 
     try:
         t0 = time.perf_counter()
         points: List[tuple[float, float]] = []
-        planned_segments = []
+        planned_segments: List[Any] = []
 
-        for i in range(len(route_codes) - 1):
+        total_legs = max(1, len(route_codes) - 1)
+        for i in range(total_legs):
+            ctx.check_deadline()
+            ctx.check_cancelled()
+            ctx.emit_progress(
+                phase="route_geometry",
+                message=f"Planning leg {i + 1}/{total_legs}",
+                percent=0.2 + (0.4 * ((i + 1) / total_legs)),
+            )
+
             a_code = route_codes[i]
             b_code = route_codes[i + 1]
             a_ap = get_airport_coordinates(a_code)
@@ -161,6 +235,26 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
                 points.extend(list(leg_points)[1:])
 
             planned_segments.extend(list(leg_segments))
+
+            # Emit partial plan so the UI can draw the route incrementally.
+            if total_legs > 1:
+                dist_nm = 0.0
+                for j in range(len(points) - 1):
+                    dist_nm += haversine_nm(
+                        points[j][0], points[j][1], points[j + 1][0], points[j + 1][1]
+                    )
+
+                partial = RouteResponse(
+                    route=route_codes,
+                    distance_nm=round(dist_nm, 1),
+                    time_hr=round(dist_nm / speed_kt, 2) if speed_kt else 0.0,
+                    origin_coords=(o_lat, o_lon),
+                    destination_coords=(d_lat, d_lon),
+                    segments=_build_segments(planned_segments),
+                    alternates=None,
+                    fuel_stops=route_codes[1:-1] or None,
+                )
+                ctx.emit_partial_plan(phase="route_geometry", plan=partial.model_dump(mode="json"))
     except FileNotFoundError as e:
         raise HTTPException(
             status_code=503,
@@ -170,16 +264,43 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         )
 
     _mark("route_geometry", t0)
+    ctx.emit_progress(phase="route_geometry", message="Route geometry complete", percent=0.6)
+    ctx.check_deadline()
+    ctx.check_cancelled()
 
-    if req.avoid_terrain:
-        t0 = time.perf_counter()
-        try:
-            max_elev_ft = terrain_service.max_elevation_ft_along_points(points)
-        except terrain_service.TerrainServiceError as e:
-            raise HTTPException(status_code=503, detail=str(e))
-        except Exception:
-            raise HTTPException(status_code=503, detail="Terrain service error")
+    total_dist = 0.0
+    for i in range(len(points) - 1):
+        total_dist += haversine_nm(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
 
+    segments = _build_segments(planned_segments)
+    ctx.emit_partial_plan(
+        phase="route_geometry",
+        plan=RouteResponse(
+            route=route_codes,
+            distance_nm=round(total_dist, 1),
+            time_hr=round(total_dist / speed_kt, 2) if speed_kt else 0.0,
+            origin_coords=(o_lat, o_lon),
+            destination_coords=(d_lat, d_lon),
+            segments=segments,
+            alternates=None,
+            fuel_stops=route_codes[1:-1] or None,
+        ).model_dump(mode="json"),
+    )
+
+    wind_speed_kt = None
+    wind_direction_deg = None
+    headwind_kt = None
+    crosswind_kt = None
+    groundspeed_kt = None
+
+    effective_speed_kt = speed_kt
+
+    alternates = None
+
+    def _terrain_check() -> None:
+        if not req.avoid_terrain:
+            return
+        max_elev_ft = terrain_service.max_elevation_ft_along_points(points)
         if max_elev_ft is not None:
             min_safe_alt = max_elev_ft + 1000.0
             if req.altitude < min_safe_alt:
@@ -191,42 +312,109 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
                     ),
                 )
 
-        _mark("terrain_check", t0)
+    def _wind_fetch() -> None:
+        nonlocal wind_speed_kt, wind_direction_deg, headwind_kt, crosswind_kt, groundspeed_kt, effective_speed_kt
+        if not req.apply_wind or not points:
+            return
+        mid = points[len(points) // 2]
+        cw = open_meteo.get_current_weather(lat=float(mid[0]), lon=float(mid[1]))
+        w_speed = cw.get("windspeed")
+        w_dir = cw.get("winddirection")
+        if w_speed is None or w_dir is None:
+            return
+        wind_speed_kt = float(w_speed)
+        wind_direction_deg = int(w_dir)
+        track = wind.bearing_deg((float(o_lat), float(o_lon)), (float(d_lat), float(d_lon)))
+        head, cross = wind.wind_components_kt(
+            track_deg=track,
+            wind_from_deg=float(wind_direction_deg),
+            wind_speed_kt=wind_speed_kt,
+        )
+        headwind_kt = round(head, 1)
+        crosswind_kt = round(cross, 1)
+        effective_speed_kt = max(30.0, speed_kt - head)
+        groundspeed_kt = round(effective_speed_kt, 1)
 
-    total_dist = 0.0
-    for i in range(len(points) - 1):
-        total_dist += haversine_nm(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
+    def _alternates() -> None:
+        nonlocal alternates
+        if not req.include_alternates:
+            return
+        out = recommend_alternates(
+            destination_lat=float(d_lat),
+            destination_lon=float(d_lon),
+            exclude_codes=route_codes,
+        )
+        alternates = out or None
 
-    wind_speed_kt = None
-    wind_direction_deg = None
-    headwind_kt = None
-    crosswind_kt = None
-    groundspeed_kt = None
+    if req.avoid_terrain or req.apply_wind or req.include_alternates:
+        ctx.emit_progress(
+            phase="enrichment", message="Computing terrain/wind/alternates", percent=0.65
+        )
 
-    effective_speed_kt = speed_kt
-    if req.apply_wind and points:
-        t0 = time.perf_counter()
-        try:
-            mid = points[len(points) // 2]
-            cw = open_meteo.get_current_weather(lat=float(mid[0]), lon=float(mid[1]))
-            w_speed = cw.get("windspeed")
-            w_dir = cw.get("winddirection")
-            if w_speed is not None and w_dir is not None:
-                wind_speed_kt = float(w_speed)
-                wind_direction_deg = int(w_dir)
-                track = wind.bearing_deg((float(o_lat), float(o_lon)), (float(d_lat), float(d_lon)))
-                head, cross = wind.wind_components_kt(
-                    track_deg=track,
-                    wind_from_deg=float(wind_direction_deg),
-                    wind_speed_kt=wind_speed_kt,
+    with ThreadPoolExecutor(max_workers=planning_external_workers()) as ex:
+        futures = {}
+        if req.avoid_terrain:
+            t0 = time.perf_counter()
+            futures["terrain"] = (t0, ex.submit(_terrain_check))
+        if req.apply_wind:
+            t0 = time.perf_counter()
+            futures["wind"] = (t0, ex.submit(_wind_fetch))
+        if req.include_alternates:
+            t0 = time.perf_counter()
+            futures["alternates"] = (t0, ex.submit(_alternates))
+
+        for name, (t0, fut) in futures.items():
+            ctx.check_deadline()
+            ctx.check_cancelled()
+
+            remaining = None
+            if ctx.deadline_s is not None:
+                remaining = max(0.0, ctx.deadline_s - time.perf_counter())
+            timeout = phase_timeout_s
+            if remaining is not None:
+                timeout = min(timeout, remaining)
+
+            ok = True
+            try:
+                fut.result(timeout=timeout)
+            except TimeoutError:
+                ok = False
+                fut.cancel()
+                if name == "terrain":
+                    raise PlanningTimeout("Planning step timed out")
+            except HTTPException:
+                raise
+            except terrain_service.TerrainServiceError as e:
+                ok = False
+                if name == "terrain":
+                    raise HTTPException(status_code=503, detail=str(e))
+            except PlanningTimeout:
+                raise
+            except Exception:
+                ok = False
+                if name == "terrain":
+                    raise HTTPException(status_code=503, detail="Terrain service error")
+            finally:
+                _mark(f"{name}_fetch", t0)
+
+            if name == "terrain":
+                ctx.emit_progress(
+                    phase="terrain",
+                    message="Terrain check complete" if ok else "Terrain check skipped",
+                    percent=0.75,
                 )
-                headwind_kt = round(head, 1)
-                crosswind_kt = round(cross, 1)
-                effective_speed_kt = max(30.0, speed_kt - head)
-                groundspeed_kt = round(effective_speed_kt, 1)
-        except Exception:
-            pass
-        _mark("wind_fetch", t0)
+            elif name == "wind":
+                ctx.emit_progress(
+                    phase="wind",
+                    message="Wind fetch complete" if ok else "Wind fetch skipped",
+                    percent=0.8,
+                )
+            elif name == "alternates":
+                ctx.emit_progress(
+                    phase="alternates",
+                    message="Alternates computed" if ok else "Alternates skipped",
+                    percent=0.9,
+                )
 
     total_time = total_dist / effective_speed_kt if effective_speed_kt else 0.0
 
@@ -241,38 +429,6 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         fuel_required = total_time * fuel_burn
         fuel_required_with_reserve = fuel_required + fuel_burn * (reserve_minutes / 60.0)
 
-    segments: List[Segment] = []
-    for idx, seg in enumerate(planned_segments):
-        seg_type: Literal["climb", "cruise", "descent"] = "cruise"
-        if idx == 0:
-            seg_type = "climb"
-        if idx == len(planned_segments) - 1:
-            seg_type = "descent" if len(planned_segments) > 1 else seg_type
-
-        segments.append(
-            Segment(
-                start=seg.start,
-                end=seg.end,
-                type=seg_type,
-                vfr_altitude=seg.vfr_altitude_ft,
-            )
-        )
-
-    alternates = None
-    if req.include_alternates:
-        t0 = time.perf_counter()
-        try:
-            out = recommend_alternates(
-                destination_lat=float(d_lat),
-                destination_lon=float(d_lon),
-                exclude_codes=route_codes,
-            )
-            alternates = out or None
-        except Exception:
-            alternates = None
-
-        _mark("alternates", t0)
-
     timings["total"] = round(time.perf_counter() - t_total, 4)
     logger.info(
         "route.calculate_route timing origin=%s destination=%s points=%s segments=%s avoid_airspaces=%s avoid_terrain=%s include_alternates=%s timings=%s",
@@ -286,7 +442,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         timings,
     )
 
-    return RouteResponse(
+    resp = RouteResponse(
         route=route_codes,
         distance_nm=round(total_dist, 1),
         time_hr=round(total_time, 2),
@@ -307,3 +463,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         crosswind_kt=crosswind_kt,
         groundspeed_kt=groundspeed_kt,
     )
+
+    ctx.emit_partial_plan(phase="complete", plan=resp.model_dump(mode="json"))
+    ctx.emit_progress(phase="complete", message="Planning complete", percent=1.0)
+    return resp
