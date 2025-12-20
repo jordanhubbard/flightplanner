@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios'
 import toast from 'react-hot-toast'
 
 import { reportFrontendErrorToBeads } from '../utils/beadsReporting'
+import { API_CONSTANTS } from '../utils/constants'
 
 const toastOnce = (message: string) => {
   toast.error(message, { id: message })
@@ -9,7 +10,7 @@ const toastOnce = (message: string) => {
 
 export const apiClient = axios.create({
   baseURL: '/api',
-  timeout: 30000,
+  timeout: API_CONSTANTS.timeout,
   headers: {
     'Content-Type': 'application/json',
   },

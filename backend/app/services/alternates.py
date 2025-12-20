@@ -49,8 +49,8 @@ def recommend_alternates(
     )
 
     scored: List[tuple[float, AlternateAirport]] = []
-    metar_attempts = 0
 
+    filtered: List[dict] = []
     for ap in candidates:
         code = _airport_code(ap)
         if not code or code in exclude:
@@ -59,6 +59,18 @@ def recommend_alternates(
         ap_type = str(ap.get("type") or "")
         if ap_type and ap_type not in ALLOWED_AIRPORT_TYPES:
             continue
+
+        filtered.append(ap)
+
+    metar_codes = [_airport_code(ap) for ap in filtered[:max_metar_fetch] if _airport_code(ap)]
+    metars = metar.fetch_metar_raws(metar_codes)
+
+    for idx, ap in enumerate(filtered):
+        code = _airport_code(ap)
+        if not code or code in exclude:
+            continue
+
+        ap_type = str(ap.get("type") or "")
 
         dist = ap.get("distance_nm")
         try:
@@ -72,9 +84,8 @@ def recommend_alternates(
         raw_metar = None
         parsed = None
 
-        if metar_attempts < max_metar_fetch:
-            metar_attempts += 1
-            raw_metar = metar.fetch_metar_raw(code)
+        if idx < max_metar_fetch:
+            raw_metar = metars.get(code)
             if raw_metar:
                 parsed = metar.parse_metar(raw_metar)
         else:

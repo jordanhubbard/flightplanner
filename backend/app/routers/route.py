@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from typing import List, Literal
 
 from fastapi import APIRouter, HTTPException
@@ -15,6 +17,7 @@ from app.services.xctry_route_planner import haversine_nm, plan_route
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -43,8 +46,16 @@ router = APIRouter()
 )
 def calculate_route(req: RouteRequest) -> RouteResponse:
     """Plan a route between two airports."""
+    t_total = time.perf_counter()
+    timings: dict[str, float] = {}
+
+    def _mark(key: str, t0: float) -> None:
+        timings[key] = round(time.perf_counter() - t0, 4)
+
+    t0 = time.perf_counter()
     origin = get_airport_coordinates(req.origin)
     dest = get_airport_coordinates(req.destination)
+    _mark("airport_lookup", t0)
     if not origin or not dest:
         raise HTTPException(status_code=400, detail="Invalid origin or destination code")
 
@@ -55,6 +66,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
 
     route_codes = [req.origin.upper(), req.destination.upper()]
     if req.plan_fuel_stops or req.aircraft_range_nm is not None:
+        t0 = time.perf_counter()
         max_leg = (
             float(req.aircraft_range_nm)
             if req.aircraft_range_nm is not None
@@ -94,7 +106,10 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
         except a_star.AStarError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+        _mark("fuel_stop_search", t0)
+
     try:
+        t0 = time.perf_counter()
         points: List[tuple[float, float]] = []
         planned_segments = []
 
@@ -127,7 +142,10 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
             ),
         )
 
+    _mark("route_geometry", t0)
+
     if req.avoid_terrain:
+        t0 = time.perf_counter()
         try:
             max_elev_ft = terrain_service.max_elevation_ft_along_points(points)
         except terrain_service.TerrainServiceError as e:
@@ -146,6 +164,8 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
                     ),
                 )
 
+        _mark("terrain_check", t0)
+
     total_dist = 0.0
     for i in range(len(points) - 1):
         total_dist += haversine_nm(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
@@ -160,6 +180,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
 
     effective_speed_kt = speed_kt
     if req.apply_wind and points:
+        t0 = time.perf_counter()
         try:
             mid = points[len(points) // 2]
             cw = open_meteo.get_current_weather(lat=float(mid[0]), lon=float(mid[1]))
@@ -180,6 +201,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
                 groundspeed_kt = round(effective_speed_kt, 1)
         except Exception:
             pass
+        _mark("wind_fetch", t0)
 
     total_time = total_dist / effective_speed_kt if effective_speed_kt else 0.0
 
@@ -213,6 +235,7 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
 
     alternates = None
     if req.include_alternates:
+        t0 = time.perf_counter()
         try:
             out = recommend_alternates(
                 destination_lat=float(d_lat),
@@ -222,6 +245,21 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
             alternates = out or None
         except Exception:
             alternates = None
+
+        _mark("alternates", t0)
+
+    timings["total"] = round(time.perf_counter() - t_total, 4)
+    logger.info(
+        "route.calculate_route timing origin=%s destination=%s points=%s segments=%s avoid_airspaces=%s avoid_terrain=%s include_alternates=%s timings=%s",
+        req.origin,
+        req.destination,
+        len(points),
+        len(planned_segments),
+        bool(req.avoid_airspaces),
+        bool(req.avoid_terrain),
+        bool(req.include_alternates),
+        timings,
+    )
 
     return RouteResponse(
         route=route_codes,

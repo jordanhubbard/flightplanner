@@ -3,11 +3,78 @@ from __future__ import annotations
 import os
 import re
 from fractions import Fraction
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 import httpx
 
 from app.utils.ttl_cache import weather_cache
+
+
+def fetch_metar_raws(stations: Sequence[str]) -> Dict[str, Optional[str]]:
+    if os.environ.get("DISABLE_METAR_FETCH") == "1":
+        return {str(s).strip().upper(): None for s in stations if str(s).strip()}
+
+    # Normalize and de-dupe while preserving order.
+    stations_u: list[str] = []
+    seen: set[str] = set()
+    for s in stations:
+        su = str(s).strip().upper()
+        if not su or su in seen:
+            continue
+        seen.add(su)
+        stations_u.append(su)
+
+    out: Dict[str, Optional[str]] = {s: None for s in stations_u}
+
+    missing: list[str] = []
+    stale: Dict[str, Optional[str]] = {}
+    for s in stations_u:
+        key = f"metar:{s}"
+        cached = weather_cache.get(key)
+        if cached is not None:
+            out[s] = cached
+            continue
+        missing.append(s)
+        stale[key] = weather_cache.get_stale(key)
+
+    if not missing:
+        return out
+
+    try:
+        resp = httpx.get(
+            "https://aviationweather.gov/api/data/metar",
+            params={"ids": ",".join(missing), "format": "raw"},
+            headers={"User-Agent": "flightplanner"},
+            timeout=20,
+        )
+
+        if resp.status_code == 204:
+            return out
+
+        resp.raise_for_status()
+        lines = [ln.strip() for ln in resp.text.splitlines() if ln.strip()]
+
+        found: Dict[str, str] = {}
+        for ln in lines:
+            # Expected: "KSFO 201356Z ..." (station code first)
+            code = ln.split(maxsplit=1)[0].strip().upper() if ln else ""
+            if code and code in out:
+                found[code] = ln
+
+        for s in missing:
+            raw = found.get(s)
+            if raw:
+                out[s] = raw
+                weather_cache.set(f"metar:{s}", raw, ttl_s=300)
+
+        return out
+    except Exception:
+        # Best-effort: fall back to stale values if present, otherwise keep None.
+        for s in missing:
+            skey = f"metar:{s}"
+            if stale.get(skey) is not None:
+                out[s] = stale[skey]
+        return out
 
 
 def fetch_metar_raw(station: str) -> Optional[str]:

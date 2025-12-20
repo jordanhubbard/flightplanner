@@ -21,7 +21,7 @@ export const THEME_CONSTANTS = {
 
 // API Constants
 export const API_CONSTANTS = {
-  timeout: 30000, // 30 seconds
+  timeout: 120000, // 120 seconds
   retryCount: 2,
   staleTime: {
     short: 5 * 60 * 1000, // 5 minutes
