@@ -64,15 +64,42 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
     d_lat = dest["latitude"]
     d_lon = dest["longitude"]
 
+    speed_kt = req.speed if req.speed_unit == "knots" else req.speed * 0.868976
+
     route_codes = [req.origin.upper(), req.destination.upper()]
     if req.plan_fuel_stops or req.aircraft_range_nm is not None:
         t0 = time.perf_counter()
-        max_leg = (
-            float(req.aircraft_range_nm)
-            if req.aircraft_range_nm is not None
-            else float(req.max_leg_distance)
-        )
-        max_leg = min(max_leg, float(req.max_leg_distance))
+
+        max_leg = None
+        if req.aircraft_range_nm is not None:
+            max_leg = float(req.aircraft_range_nm)
+        elif req.plan_fuel_stops:
+            if req.fuel_on_board_gal is None or req.fuel_burn_gph is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Fuel stop planning requires fuel_on_board_gal and fuel_burn_gph (or aircraft_range_nm)"
+                    ),
+                )
+
+            gph = float(req.fuel_burn_gph)
+            reserve_fuel = gph * (float(req.reserve_minutes) / 60.0)
+            usable = float(req.fuel_on_board_gal) - reserve_fuel
+            if usable <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Fuel on board ({req.fuel_on_board_gal} gal) must exceed reserve fuel ({reserve_fuel:.1f} gal)"
+                    ),
+                )
+
+            # Still-air max distance for a leg.
+            max_leg = usable * (speed_kt / gph)
+
+        if max_leg is None or max_leg <= 0:
+            raise HTTPException(status_code=400, detail="max leg distance must be > 0")
+
+        max_leg = min(float(max_leg), float(req.max_leg_distance))
 
         candidates = []
         for ap in load_airport_cache():
@@ -169,8 +196,6 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
     total_dist = 0.0
     for i in range(len(points) - 1):
         total_dist += haversine_nm(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
-
-    speed_kt = req.speed if req.speed_unit == "knots" else req.speed * 0.868976
 
     wind_speed_kt = None
     wind_direction_deg = None

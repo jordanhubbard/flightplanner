@@ -34,8 +34,8 @@ export const API_CONSTANTS = {
 export const VALIDATION_CONSTANTS = {
   airportCode: {
     minLength: 3,
-    maxLength: 4,
-    pattern: /^[A-Z]+$/,
+    maxLength: 5,
+    pattern: /^[A-Z0-9]+$/,
   },
 } as const
 

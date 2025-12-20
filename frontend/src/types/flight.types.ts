@@ -63,6 +63,7 @@ export type RoutePlanRequest = {
   plan_fuel_stops?: boolean
   aircraft_range_nm?: number
   max_leg_distance?: number
+  fuel_on_board_gal?: number
   fuel_burn_gph?: number
   reserve_minutes?: number
   fuel_strategy?: 'time' | 'economy'

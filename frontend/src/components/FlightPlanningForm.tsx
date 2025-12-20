@@ -42,6 +42,11 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
   const [avoidTerrain, setAvoidTerrain] = useState(false)
   const [applyWind, setApplyWind] = useState(true)
 
+  const [planFuelStops, setPlanFuelStops] = useState(false)
+  const [fuelBurnGph, setFuelBurnGph] = useState<number>(8.5)
+  const [fuelOnBoardGal, setFuelOnBoardGal] = useState<number>(40)
+  const [reserveMinutes, setReserveMinutes] = useState<number>(45)
+
   const [forecastDays, setForecastDays] = useState<number>(3)
 
   const originSearch = useAirportSearch(origin)
@@ -84,6 +89,10 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
         avoid_terrain: avoidTerrain,
         apply_wind: applyWind,
         include_alternates: true,
+        plan_fuel_stops: planFuelStops,
+        fuel_burn_gph: planFuelStops ? fuelBurnGph : undefined,
+        fuel_on_board_gal: planFuelStops ? fuelOnBoardGal : undefined,
+        reserve_minutes: planFuelStops ? reserveMinutes : undefined,
       }
       onSubmit(req)
       return
@@ -219,7 +228,57 @@ const FlightPlanningForm: React.FC<Props> = ({ isLoading, onSubmit }) => {
               }
               label="Apply wind to groundspeed/time"
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={planFuelStops}
+                  onChange={(e) => setPlanFuelStops(e.target.checked)}
+                  disabled={isLoading}
+                />
+              }
+              label="Add fuel stops"
+            />
           </Grid>
+
+          {planFuelStops ? (
+            <>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Fuel burn (gph)"
+                  type="number"
+                  value={fuelBurnGph}
+                  onChange={(e) => setFuelBurnGph(Number(e.target.value))}
+                  disabled={isLoading}
+                  inputProps={{ min: 0.1, step: 0.1 }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Fuel on board at takeoff (gal)"
+                  type="number"
+                  value={fuelOnBoardGal}
+                  onChange={(e) => setFuelOnBoardGal(Number(e.target.value))}
+                  disabled={isLoading}
+                  inputProps={{ min: 0.1, step: 0.1 }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Reserve (minutes)"
+                  type="number"
+                  value={reserveMinutes}
+                  onChange={(e) => setReserveMinutes(Number(e.target.value))}
+                  disabled={isLoading}
+                  inputProps={{ min: 0, step: 5 }}
+                />
+              </Grid>
+            </>
+          ) : null}
         </>
       ) : (
         <>

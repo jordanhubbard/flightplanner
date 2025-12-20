@@ -12,7 +12,7 @@ export const normalizeAirportCode = (value: string): string => {
   const beforeDash = trimmed.split(/[-–—]/)[0]?.trim() || ''
   const token = beforeDash.split(/\s+/)[0]?.trim() || ''
 
-  const match = token.match(/^[A-Z]{3,4}$/)
+  const match = token.match(/^[A-Z0-9]{3,5}$/)
   return match ? token : ''
 }
 
@@ -23,17 +23,17 @@ export const validateAirportCode = (code: string): ValidationResult => {
     return { valid: false, error: 'Airport code is required' }
   }
 
-  if (normalized.length !== 3 && normalized.length !== 4) {
+  if (normalized.length < 3 || normalized.length > 5) {
     return {
       valid: false,
-      error: 'Airport code must be 3 (IATA) or 4 (ICAO) characters',
+      error: 'Airport code must be 3-5 characters',
     }
   }
 
-  if (!/^[A-Z]+$/.test(normalized)) {
+  if (!/^[A-Z0-9]+$/.test(normalized)) {
     return {
       valid: false,
-      error: 'Airport code must contain only letters',
+      error: 'Airport code must contain only letters and numbers',
     }
   }
 

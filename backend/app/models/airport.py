@@ -25,20 +25,39 @@ def _normalize_airport_code(value: str) -> str:
     token = before_dash.strip().split()[0] if before_dash.strip() else ""
     token_u = token.upper()
 
-    if re.fullmatch(r"[A-Z]{3,4}", token_u):
+    if re.fullmatch(r"[A-Z0-9]{3,5}", token_u):
         return token_u
 
     return value.strip().upper()
 
 
+def _candidate_codes(code_u: str) -> set[str]:
+    codes = {code_u}
+
+    # Our airport cache stores many US local identifiers as pseudo-ICAO codes prefixed with 'K'
+    # (e.g., 7S5 -> K7S5). Allow lookups by the FAA/local code.
+    if (
+        code_u
+        and not code_u.startswith("K")
+        and (len(code_u) == 3 or (3 <= len(code_u) <= 4 and any(ch.isdigit() for ch in code_u)))
+    ):
+        codes.add(f"K{code_u}")
+
+    if code_u.startswith("K") and 4 <= len(code_u) <= 5:
+        codes.add(code_u[1:])
+
+    return codes
+
+
 def get_airport_coordinates(code: str) -> Optional[Dict[str, Any]]:
     code_u = _normalize_airport_code(code)
+    candidates = _candidate_codes(code_u)
 
     for airport in load_airport_cache():
         icao_code = (airport.get("icao") or airport.get("icaoCode") or "").upper()
         iata_code = (airport.get("iata") or airport.get("iataCode") or "").upper()
 
-        if code_u not in {icao_code, iata_code}:
+        if not ({icao_code, iata_code} & candidates):
             continue
 
         lat, lon = _extract_lat_lon(airport)
@@ -116,6 +135,7 @@ def search_airports_advanced(
     for airport in load_airport_cache():
         icao_code = (airport.get("icao") or airport.get("icaoCode") or "").upper()
         iata_code = (airport.get("iata") or airport.get("iataCode") or "").upper()
+        alt_codes = _candidate_codes(icao_code)
         name = str(airport.get("name") or "")
         city = str(airport.get("city") or "")
         country = str(airport.get("country") or "")
@@ -153,10 +173,10 @@ def search_airports_advanced(
 
         score = 0.0
         if q:
-            code_hay = f"{icao_code} {iata_code}".lower()
-            text_hay = f"{icao_code} {iata_code} {name} {city} {country}".lower()
+            code_hay = " ".join(sorted({icao_code, iata_code, *alt_codes})).lower()
+            text_hay = f"{code_hay} {name} {city} {country}".lower()
 
-            if q == icao_code.lower() or (q and q == iata_code.lower()):
+            if q in {c.lower() for c in {icao_code, iata_code, *alt_codes} if c}:
                 score = 1.0
             elif icao_code.lower().startswith(q):
                 score = 0.95

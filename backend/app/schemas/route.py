@@ -13,9 +13,10 @@ class RouteRequest(BaseModel):
     altitude: int = Field(..., description="Requested cruising altitude (ft)")
     avoid_airspaces: bool = False
     avoid_terrain: bool = False
-    max_leg_distance: float = 150.0
+    max_leg_distance: float = 500.0
     plan_fuel_stops: bool = False
     aircraft_range_nm: Optional[float] = None
+    fuel_on_board_gal: Optional[float] = None
     fuel_burn_gph: Optional[float] = None
     reserve_minutes: int = 45
     fuel_strategy: Literal["time", "economy"] = "time"

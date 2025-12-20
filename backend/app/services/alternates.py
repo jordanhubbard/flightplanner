@@ -39,6 +39,12 @@ def recommend_alternates(
     thresholds: AlternateThresholds = AlternateThresholds(),
 ) -> List[AlternateAirport]:
     exclude = {c.strip().upper() for c in exclude_codes if c}
+    # Match our pseudo-ICAO storage for US local identifiers (e.g. 7S5 <-> K7S5).
+    for c in list(exclude):
+        if c and not c.startswith("K") and (len(c) == 3 or any(ch.isdigit() for ch in c)):
+            exclude.add(f"K{c}")
+        if c.startswith("K") and len(c) >= 4:
+            exclude.add(c[1:])
 
     candidates = search_airports_advanced(
         query=None,

@@ -22,6 +22,17 @@ def test_airports_search_and_lookup(monkeypatch) -> None:
                 "type": "small_airport",
             },
             {
+                "icao": "K7S5",
+                "iata": "",
+                "name": "Independence State Airport",
+                "city": "Independence",
+                "country": "US",
+                "latitude": 44.867,
+                "longitude": -123.198,
+                "elevation": 4777,
+                "type": "small_airport",
+            },
+            {
                 "icao": "KSQL",
                 "iata": "SQL",
                 "name": "San Carlos",
@@ -64,3 +75,8 @@ def test_airports_search_and_lookup(monkeypatch) -> None:
     assert resp2.status_code == 200
     airport = resp2.json()
     assert airport["icao"] == "KSQL"
+
+    resp3 = client.get("/api/airports/7S5")
+    assert resp3.status_code == 200
+    airport2 = resp3.json()
+    assert airport2["icao"] == "K7S5"
