@@ -56,8 +56,9 @@ def test_plan_route_mode_ok(monkeypatch) -> None:
     assert body["alternates"][0]["code"] == "CCC"
 
 
-def test_plan_route_mode_terrain_requires_api_key(monkeypatch) -> None:
+def test_plan_route_mode_terrain_does_not_require_opentopo_key(monkeypatch) -> None:
     monkeypatch.delenv("OPENTOPOGRAPHY_API_KEY", raising=False)
+    monkeypatch.delenv("TERRAIN_PROVIDER", raising=False)
 
     def fake_get_airport_coordinates(code: str):
         code_u = code.upper()
@@ -70,6 +71,9 @@ def test_plan_route_mode_terrain_requires_api_key(monkeypatch) -> None:
     import app.routers.route as route_router
 
     monkeypatch.setattr(route_router, "get_airport_coordinates", fake_get_airport_coordinates)
+    monkeypatch.setattr(
+        route_router.terrain_service, "_fetch_open_meteo_elevations_m", lambda _pts: [0.0, 0.0]
+    )
 
     client = TestClient(app)
     resp = client.post(
@@ -86,8 +90,7 @@ def test_plan_route_mode_terrain_requires_api_key(monkeypatch) -> None:
         },
     )
 
-    assert resp.status_code == 503
-    assert "OPENTOPOGRAPHY_API_KEY" in resp.json()["detail"]
+    assert resp.status_code == 200
 
 
 def test_plan_route_mode_astar_multi_leg(monkeypatch) -> None:

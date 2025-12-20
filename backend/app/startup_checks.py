@@ -30,20 +30,22 @@ def collect_startup_config_issues() -> List[Dict[str, Any]]:
             }
         )
 
-    opentopo_key = os.environ.get("OPENTOPOGRAPHY_API_KEY")
-    if not opentopo_key:
-        issues.append(
-            {
-                "severity": "warning",
-                "missing": ["OPENTOPOGRAPHY_API_KEY"],
-                "feature": "Terrain / elevation (OpenTopography SRTM API)",
-                "impact": "Terrain endpoints (/api/terrain/*) and terrain avoidance/elevation profile will fail.",
-                "remediation": [
-                    "OpenTopography provides elevation data (SRTM) used for terrain analysis: https://opentopography.org/",
-                    "Generate an API key from your OpenTopography account (My Account → API Keys).",
-                    "Set OPENTOPOGRAPHY_API_KEY in your environment or .env file and restart the backend.",
-                ],
-            }
-        )
+    terrain_provider = (os.environ.get("TERRAIN_PROVIDER") or "open-meteo").strip().lower()
+    if terrain_provider.replace("_", "-") == "opentopography":
+        opentopo_key = os.environ.get("OPENTOPOGRAPHY_API_KEY")
+        if not opentopo_key:
+            issues.append(
+                {
+                    "severity": "warning",
+                    "missing": ["OPENTOPOGRAPHY_API_KEY"],
+                    "feature": "Terrain / elevation (OpenTopography SRTM API)",
+                    "impact": "Terrain endpoints (/api/terrain/*) and terrain avoidance/elevation profile will fail.",
+                    "remediation": [
+                        "OpenTopography provides elevation data (SRTM) used for terrain analysis: https://opentopography.org/",
+                        "Generate an API key from your OpenTopography account (My Account → API Keys).",
+                        "Set OPENTOPOGRAPHY_API_KEY in your environment or .env file and restart the backend.",
+                    ],
+                }
+            )
 
     return issues

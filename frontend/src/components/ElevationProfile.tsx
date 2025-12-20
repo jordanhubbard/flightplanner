@@ -59,8 +59,7 @@ const ElevationProfile: React.FC<Props> = ({ plan }) => {
   if (query.isError) {
     return (
       <Alert severity="info">
-        Elevation profile unavailable. Configure the backend terrain provider (e.g.
-        OPENTOPOGRAPHY_API_KEY) to enable elevation analysis.
+        Elevation profile unavailable.
       </Alert>
     )
   }
