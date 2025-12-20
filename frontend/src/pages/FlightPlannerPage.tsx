@@ -176,6 +176,20 @@ const FlightPlannerPage: React.FC = () => {
                 </CardContent>
               </Card>
 
+              <Grid container spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
+                <Grid item xs={12} md={4}>
+                  <WeatherOverlayControls
+                    overlays={overlays}
+                    setOverlays={setOverlays}
+                    disabled={isLoading}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={8}>
+                  <RouteMap plan={routePlan} overlays={overlays} />
+                </Grid>
+              </Grid>
+
               <Card sx={{ mb: 2 }}>
                 <CardContent>
                   <RouteLegsTable plan={routePlan} />
@@ -201,20 +215,6 @@ const FlightPlannerPage: React.FC = () => {
                   </CardContent>
                 </Card>
               ) : null}
-
-              <Grid container spacing={2} alignItems="flex-start">
-                <Grid item xs={12} md={4}>
-                  <WeatherOverlayControls
-                    overlays={overlays}
-                    setOverlays={setOverlays}
-                    disabled={isLoading}
-                  />
-                </Grid>
-
-                <Grid item xs={12} md={8}>
-                  <RouteMap plan={routePlan} overlays={overlays} />
-                </Grid>
-              </Grid>
             </ResultsSection>
           ) : lastMode === 'local' && localPlan ? (
             <ResultsSection title="Local Results">
