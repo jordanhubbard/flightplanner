@@ -102,4 +102,8 @@ EXPOSE 8000
 # Bind to IPv4 by default for Railway compatibility; can be overridden (e.g. UVICORN_HOST=::).
 ENV UVICORN_HOST=0.0.0.0
 
-CMD ["sh", "-c", "uvicorn main:app --host ${UVICORN_HOST:-0.0.0.0} --port ${PORT:-8000}"]
+# Railway routes to the service's configured port (derived from EXPOSE). Avoid relying on Railway's
+# PORT env var here to prevent mismatches.
+ENV UVICORN_PORT=8000
+
+CMD ["sh", "-c", "uvicorn main:app --host ${UVICORN_HOST:-0.0.0.0} --port ${UVICORN_PORT:-8000}"]
