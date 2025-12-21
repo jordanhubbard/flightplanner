@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field
@@ -37,6 +38,8 @@ class RouteLeg(BaseModel):
     distance_nm: float
     groundspeed_kt: float
     ete_minutes: float
+    depart_time_utc: Optional[datetime] = None
+    arrive_time_utc: Optional[datetime] = None
     type: Optional[Literal["climb", "cruise", "descent"]] = None
     vfr_altitude: Optional[int] = None
     refuel_minutes: int = 0
@@ -62,6 +65,9 @@ class AlternateAirport(BaseModel):
 
 
 class RouteResponse(BaseModel):
+    planned_at_utc: datetime
+    departure_time_utc: datetime
+    arrival_time_utc: Optional[datetime] = None
     route: List[str]
     distance_nm: float
     time_hr: float

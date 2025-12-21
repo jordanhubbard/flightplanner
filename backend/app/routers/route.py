@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from datetime import datetime, timedelta, timezone
 import logging
 import math
 import time
@@ -114,6 +115,9 @@ def calculate_route_internal(
 
     if ctx is None:
         ctx = PlanningContext(deadline_s=time.perf_counter() + planning_total_timeout_s())
+
+    planned_at_utc = datetime.now(timezone.utc)
+    departure_time_utc = planned_at_utc
 
     phase_timeout_s = planning_phase_timeout_s()
 
@@ -290,10 +294,14 @@ def calculate_route_internal(
                         points[j][0], points[j][1], points[j + 1][0], points[j + 1][1]
                     )
 
+                time_hr = round(dist_nm / speed_kt, 2) if speed_kt else 0.0
                 partial = RouteResponse(
+                    planned_at_utc=planned_at_utc,
+                    departure_time_utc=departure_time_utc,
+                    arrival_time_utc=departure_time_utc + timedelta(hours=float(time_hr)),
                     route=route_codes,
                     distance_nm=round(dist_nm, 1),
-                    time_hr=round(dist_nm / speed_kt, 2) if speed_kt else 0.0,
+                    time_hr=time_hr,
                     origin_coords=(o_lat, o_lon),
                     destination_coords=(d_lat, d_lon),
                     segments=_build_segments(planned_segments),
@@ -319,12 +327,16 @@ def calculate_route_internal(
         total_dist += haversine_nm(points[i][0], points[i][1], points[i + 1][0], points[i + 1][1])
 
     segments = _build_segments(planned_segments)
+    time_hr = round(total_dist / speed_kt, 2) if speed_kt else 0.0
     ctx.emit_partial_plan(
         phase="route_geometry",
         plan=RouteResponse(
+            planned_at_utc=planned_at_utc,
+            departure_time_utc=departure_time_utc,
+            arrival_time_utc=departure_time_utc + timedelta(hours=float(time_hr)),
             route=route_codes,
             distance_nm=round(total_dist, 1),
-            time_hr=round(total_dist / speed_kt, 2) if speed_kt else 0.0,
+            time_hr=time_hr,
             origin_coords=(o_lat, o_lon),
             destination_coords=(d_lat, d_lon),
             segments=segments,
@@ -502,6 +514,7 @@ def calculate_route_internal(
                 )
 
     total_time = total_dist / effective_speed_kt if effective_speed_kt else 0.0
+    arrival_time_utc = departure_time_utc + timedelta(hours=float(total_time))
 
     if planned_legs:
         REFUEL_MINUTES = 30
@@ -539,6 +552,9 @@ def calculate_route_internal(
                 ete_min = (dist_nm / gs) * 60.0 if gs > 0 else 0.0
                 elapsed += ete_min
 
+                arrive_leg_time_utc = departure_time_utc + timedelta(minutes=float(elapsed))
+                depart_leg_time_utc = arrive_leg_time_utc - timedelta(minutes=float(ete_min))
+
                 legs_out.append(
                     RouteLeg(
                         from_code=point_labels[idx],
@@ -546,6 +562,8 @@ def calculate_route_internal(
                         distance_nm=round(dist_nm, 1),
                         groundspeed_kt=round(gs, 1),
                         ete_minutes=round(ete_min, 1),
+                        depart_time_utc=depart_leg_time_utc,
+                        arrive_time_utc=arrive_leg_time_utc,
                         type=seg.type,
                         vfr_altitude=seg.vfr_altitude,
                         refuel_minutes=0,
@@ -570,6 +588,9 @@ def calculate_route_internal(
                 ete_min = (dist_nm / gs) * 60.0 if gs > 0 else 0.0
                 elapsed += ete_min
 
+                arrive_leg_time_utc = departure_time_utc + timedelta(minutes=float(elapsed))
+                depart_leg_time_utc = arrive_leg_time_utc - timedelta(minutes=float(ete_min))
+
                 fuel_stop = bool(leg.get("fuel_stop"))
                 refuel = REFUEL_MINUTES if fuel_stop else 0
 
@@ -580,6 +601,8 @@ def calculate_route_internal(
                         distance_nm=round(dist_nm, 1),
                         groundspeed_kt=round(gs, 1),
                         ete_minutes=round(ete_min, 1),
+                        depart_time_utc=depart_leg_time_utc,
+                        arrive_time_utc=arrive_leg_time_utc,
                         refuel_minutes=refuel,
                         elapsed_minutes=round(elapsed, 1),
                         fuel_stop=fuel_stop,
@@ -590,6 +613,10 @@ def calculate_route_internal(
                     elapsed += float(REFUEL_MINUTES)
 
         legs = legs_out
+        if legs_out:
+            arrival_time_utc = departure_time_utc + timedelta(
+                minutes=float(legs_out[-1].elapsed_minutes)
+            )
 
     fuel_burn = None
     reserve_minutes = None
@@ -616,6 +643,9 @@ def calculate_route_internal(
     )
 
     resp = RouteResponse(
+        planned_at_utc=planned_at_utc,
+        departure_time_utc=departure_time_utc,
+        arrival_time_utc=arrival_time_utc,
         route=route_codes,
         distance_nm=round(total_dist, 1),
         time_hr=round(total_time, 2),

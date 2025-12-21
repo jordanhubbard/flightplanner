@@ -121,7 +121,7 @@ async def plan_stream(req: PlanRequest, request: Request) -> StreamingResponse:
                         plan_obj = route.calculate_route_internal(req, ctx=ctx)
                         plan_payload = plan_obj.model_dump(mode="json")
                     else:
-                        plan_payload = local.local_plan(req)
+                        plan_payload = local.local_plan(req).model_dump(mode="json")
                 on_event({"type": "done", "plan": plan_payload})
             except PlanningCapacityError as e:
                 on_event({"type": "error", "status_code": 503, "detail": str(e)})

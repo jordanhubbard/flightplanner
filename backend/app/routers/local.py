@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import math
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -62,8 +63,9 @@ def _haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         }
     },
 )
-def local_plan(req: LocalPlanRequest) -> Dict[str, Any]:
+def local_plan(req: LocalPlanRequest) -> LocalPlanResponse:
     radius_nm = float(req.radius_nm) if req.radius_nm is not None else 50.0
+    planned_at_utc = datetime.now(timezone.utc)
 
     center = get_airport_coordinates(req.airport)
     if not center:
@@ -111,10 +113,11 @@ def local_plan(req: LocalPlanRequest) -> Dict[str, Any]:
     nearby.sort(key=lambda a: a["distance_nm"])
     nearby = nearby[:25]
 
-    return {
-        "airport": req.airport.upper(),
-        "radius_nm": round(radius_nm, 2),
-        "center": {
+    return LocalPlanResponse(
+        planned_at_utc=planned_at_utc,
+        airport=req.airport.upper(),
+        radius_nm=round(radius_nm, 2),
+        center={
             "icao": str(center.get("icao") or ""),
             "iata": str(center.get("iata") or ""),
             "name": center.get("name"),
@@ -125,5 +128,5 @@ def local_plan(req: LocalPlanRequest) -> Dict[str, Any]:
             "elevation": center.get("elevation"),
             "type": str(center.get("type") or ""),
         },
-        "nearby_airports": nearby,
-    }
+        nearby_airports=nearby,
+    )

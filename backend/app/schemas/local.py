@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -27,6 +28,7 @@ class NearbyAirport(AirportSummary):
 
 
 class LocalPlanResponse(BaseModel):
+    planned_at_utc: datetime
     airport: str
     radius_nm: float
     center: AirportSummary

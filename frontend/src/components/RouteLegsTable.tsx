@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material/styles'
 import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 
 import type { FlightPlan } from '../types'
-import { haversineNm } from '../utils'
+import { formatUtcMinute, haversineNm } from '../utils'
 
 type Props = {
   plan: FlightPlan
@@ -18,6 +18,8 @@ type LegRow = {
   distance_nm: number
   groundspeed_kt?: number
   ete_minutes?: number
+  depart_time_utc?: string | null
+  arrive_time_utc?: string | null
   elapsed_minutes?: number
   refuel_minutes?: number
   fuel_stop?: boolean
@@ -58,6 +60,8 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
         distance_nm: l.distance_nm,
         groundspeed_kt: l.groundspeed_kt,
         ete_minutes: l.ete_minutes,
+        depart_time_utc: l.depart_time_utc,
+        arrive_time_utc: l.arrive_time_utc,
         type: l.type || undefined,
         vfr_altitude: l.vfr_altitude ?? undefined,
         elapsed_minutes: l.elapsed_minutes,
@@ -120,6 +124,18 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
         { field: 'leg', headerName: 'Leg', width: 70 },
         { field: 'from', headerName: 'From', width: 100 },
         { field: 'to', headerName: 'To', width: 100 },
+        {
+          field: 'depart_time_utc',
+          headerName: 'Depart (UTC)',
+          width: 140,
+          valueFormatter: (p) => formatUtcMinute(p.value as string),
+        },
+        {
+          field: 'arrive_time_utc',
+          headerName: 'Arrive (UTC)',
+          width: 140,
+          valueFormatter: (p) => formatUtcMinute(p.value as string),
+        },
         { field: 'distance_nm', headerName: 'Distance (nm)', width: 130 },
         { field: 'groundspeed_kt', headerName: 'GS (kt)', width: 90 },
         {
@@ -151,6 +167,18 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
         { field: 'leg', headerName: 'Leg', width: 70 },
         { field: 'from', headerName: 'From', width: 100 },
         { field: 'to', headerName: 'To', width: 100 },
+        {
+          field: 'depart_time_utc',
+          headerName: 'Depart (UTC)',
+          width: 140,
+          valueFormatter: (p) => formatUtcMinute(p.value as string),
+        },
+        {
+          field: 'arrive_time_utc',
+          headerName: 'Arrive (UTC)',
+          width: 140,
+          valueFormatter: (p) => formatUtcMinute(p.value as string),
+        },
         { field: 'distance_nm', headerName: 'Distance (nm)', width: 130 },
         { field: 'vfr_altitude', headerName: 'Alt (ft)', width: 110 },
         { field: 'type', headerName: 'Type', width: 110 },

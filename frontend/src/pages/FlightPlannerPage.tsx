@@ -26,6 +26,7 @@ import RouteWaypointWeatherTable from '../components/RouteWaypointWeatherTable'
 import WeatherOverlayControls, { type WeatherOverlays } from '../components/WeatherOverlayControls'
 import { useApiMutation } from '../hooks'
 import { flightPlannerService } from '../services'
+import { formatUtcMinute } from '../utils'
 import type {
   FlightPlan,
   FlightPlanRequest,
@@ -219,6 +220,16 @@ const FlightPlannerPage: React.FC = () => {
                   <Divider sx={{ my: 2 }} />
 
                   <Grid container spacing={2}>
+                    {displayedRoutePlan.departure_time_utc ? (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">
+                          Departure (UTC): {formatUtcMinute(displayedRoutePlan.departure_time_utc)}
+                          {displayedRoutePlan.arrival_time_utc
+                            ? ` → ${formatUtcMinute(displayedRoutePlan.arrival_time_utc)}`
+                            : ''}
+                        </Typography>
+                      </Grid>
+                    ) : null}
                     <Grid item xs={6}>
                       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Speed sx={{ mr: 1, fontSize: 20 }} />
@@ -324,6 +335,11 @@ const FlightPlannerPage: React.FC = () => {
                   <Typography variant="subtitle1" gutterBottom>
                     Center: {localPlan.airport} (radius {localPlan.radius_nm} nm)
                   </Typography>
+                  {localPlan.planned_at_utc ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Planned at (UTC): {formatUtcMinute(localPlan.planned_at_utc)}
+                    </Typography>
+                  ) : null}
                   <Box sx={{ mb: 2 }}>
                     {localPlan.nearby_airports.slice(0, 20).map((ap) => (
                       <Chip

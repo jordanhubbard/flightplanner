@@ -15,6 +15,8 @@ export interface RouteLeg {
   distance_nm: number
   groundspeed_kt: number
   ete_minutes: number
+  depart_time_utc?: string | null
+  arrive_time_utc?: string | null
   type?: 'climb' | 'cruise' | 'descent' | null
   vfr_altitude?: number | null
   refuel_minutes: number
@@ -40,6 +42,9 @@ export interface AlternateAirport {
 }
 
 export interface FlightPlan {
+  planned_at_utc?: string | null
+  departure_time_utc?: string | null
+  arrival_time_utc?: string | null
   route: string[]
   distance_nm: number
   time_hr: number
@@ -108,6 +113,7 @@ export interface NearbyAirport extends LocalAirportSummary {
 }
 
 export interface LocalPlanResponse {
+  planned_at_utc?: string | null
   airport: string
   radius_nm: number
   center: LocalAirportSummary
