@@ -15,6 +15,16 @@ interface State {
   errorInfo?: ErrorInfo
 }
 
+const isDynamicImportError = (error?: Error) => {
+  const msg = error?.message || ''
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('ChunkLoadError')
+  )
+}
+
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
@@ -42,6 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const showReload = isDynamicImportError(this.state.error)
       if (this.props.fallback) {
         return this.props.fallback
       }
@@ -63,8 +74,9 @@ export class ErrorBoundary extends Component<Props, State> {
               </AlertTitle>
 
               <Typography variant="body1" sx={{ mb: 2 }}>
-                The application encountered an unexpected error. This has been logged and we'll look
-                into it.
+                {showReload
+                  ? 'A new version may have been deployed. Please reload to continue.'
+                  : "The application encountered an unexpected error. This has been logged and we'll look into it."}
               </Typography>
 
               {this.state.error && (
@@ -89,9 +101,15 @@ export class ErrorBoundary extends Component<Props, State> {
               )}
 
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                <Button variant="contained" startIcon={<Refresh />} onClick={this.handleReset}>
-                  Try Again
-                </Button>
+                {showReload ? (
+                  <Button variant="contained" startIcon={<Refresh />} onClick={() => window.location.reload()}>
+                    Reload
+                  </Button>
+                ) : (
+                  <Button variant="contained" startIcon={<Refresh />} onClick={this.handleReset}>
+                    Try Again
+                  </Button>
+                )}
                 <Button variant="outlined" onClick={() => (window.location.href = '/')}>
                   Go to Home
                 </Button>

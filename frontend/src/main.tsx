@@ -9,6 +9,19 @@ import App from './App.tsx'
 
 import { installFrontendBeadsErrorReporting } from './utils/beadsReporting'
 
+const reloadOnceKey = 'flightplanner:reload-once:preload-error'
+
+const reloadOnce = () => {
+  try {
+    if (sessionStorage.getItem(reloadOnceKey) === '1') return
+    sessionStorage.setItem(reloadOnceKey, '1')
+  } catch {
+    // Ignore storage failures; best-effort only.
+  }
+
+  window.location.reload()
+}
+
 // Create a theme instance
 const theme = createTheme({
   palette: {
@@ -33,6 +46,13 @@ const queryClient = new QueryClient({
 })
 
 installFrontendBeadsErrorReporting()
+
+// If a new deploy happens while a user has a page open, the old HTML can reference
+// chunk filenames that no longer exist, causing dynamic import failures.
+window.addEventListener('vite:preloadError', (ev) => {
+  ev.preventDefault()
+  reloadOnce()
+})
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
