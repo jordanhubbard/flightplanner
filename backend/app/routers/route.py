@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import logging
+import math
 import time
 from typing import Any, List, Literal, Optional
 
@@ -24,7 +25,7 @@ from app.services.planning_runtime import (
 )
 from app.services import terrain_service
 from app.services import wind
-from app.services.xctry_route_planner import haversine_nm, plan_route
+from app.services.xctry_route_planner import RouteSegment, get_leg_sample_points, haversine_nm, plan_route
 
 
 router = APIRouter()
@@ -71,12 +72,22 @@ def calculate_route(req: RouteRequest) -> RouteResponse:
 
 def _build_segments(planned_segments) -> List[Segment]:
     segments: List[Segment] = []
+    prev_alt: Optional[int] = None
     for idx, seg in enumerate(planned_segments):
         seg_type: Literal["climb", "cruise", "descent"] = "cruise"
         if idx == 0:
             seg_type = "climb"
         if idx == len(planned_segments) - 1:
             seg_type = "descent" if len(planned_segments) > 1 else seg_type
+
+        # When terrain avoidance adjusts altitudes mid-route, reflect those steps as climb/descent segments.
+        if 0 < idx < (len(planned_segments) - 1) and prev_alt is not None:
+            if seg.vfr_altitude_ft > prev_alt:
+                seg_type = "climb"
+            elif seg.vfr_altitude_ft < prev_alt:
+                seg_type = "descent"
+
+        prev_alt = int(seg.vfr_altitude_ft)
 
         segments.append(
             Segment(
@@ -103,6 +114,11 @@ def calculate_route_internal(
 
     def _mark(key: str, t0: float) -> None:
         timings[key] = round(time.perf_counter() - t0, 4)
+
+    def _round_up_ft(value_ft: float, *, step_ft: int = 500) -> int:
+        if step_ft <= 0:
+            return int(round(value_ft))
+        return int(math.ceil(float(value_ft) / float(step_ft)) * step_ft)
 
     ctx.emit_progress(phase="start", message="Starting route planning", percent=0.0)
     ctx.check_deadline()
@@ -325,19 +341,56 @@ def calculate_route_internal(
     legs: Optional[List[RouteLeg]] = None
 
     def _terrain_check() -> None:
+        nonlocal planned_segments, segments
         if not req.avoid_terrain:
             return
-        max_elev_ft = terrain_service.max_elevation_ft_along_points(points)
-        if max_elev_ft is not None:
-            min_safe_alt = max_elev_ft + 1000.0
-            if req.altitude < min_safe_alt:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        f"Requested altitude {req.altitude} ft is below recommended minimum {min_safe_alt:.0f} ft "
-                        f"(max terrain {max_elev_ft:.0f} ft + 1000 ft clearance)"
-                    ),
+
+        if not planned_segments:
+            return
+
+        # Sample each segment and ensure we stay 1000 ft above the highest terrain on that segment.
+        # We treat req.altitude as the baseline "cruise" altitude and only increase it when necessary.
+        flat_points: List[tuple[float, float]] = []
+        seg_slices: List[tuple[int, int]] = []
+
+        for seg in planned_segments:
+            pts = get_leg_sample_points(
+                seg.start[0], seg.start[1], seg.end[0], seg.end[1], interval_nm=10
+            )
+            seg_slices.append((len(flat_points), len(pts)))
+            flat_points.extend(pts)
+
+        prof = terrain_service.elevation_profile(flat_points)
+        elevs = [elev_ft for _lat, _lon, elev_ft in prof]
+        if len(elevs) < len(flat_points):
+            elevs.extend([None] * (len(flat_points) - len(elevs)))
+
+        adjusted: List[RouteSegment] = []
+        for seg, (start, n) in zip(planned_segments, seg_slices, strict=False):
+            max_elev_ft: Optional[float] = None
+            for elev_ft in elevs[start : start + n]:
+                if elev_ft is None:
+                    continue
+                if max_elev_ft is None or elev_ft > max_elev_ft:
+                    max_elev_ft = float(elev_ft)
+
+            min_safe_alt_ft = (max_elev_ft + 1000.0) if max_elev_ft is not None else None
+            target_alt_ft = float(req.altitude)
+            if min_safe_alt_ft is not None:
+                target_alt_ft = max(target_alt_ft, float(min_safe_alt_ft))
+
+            target_alt_rounded = _round_up_ft(target_alt_ft, step_ft=500)
+            adjusted.append(
+                RouteSegment(
+                    start=seg.start,
+                    end=seg.end,
+                    segment_type=seg.segment_type,
+                    vfr_altitude_ft=target_alt_rounded,
                 )
+            )
+
+        planned_segments = adjusted
+        segments = _build_segments(planned_segments)
 
     def _wind_fetch() -> None:
         nonlocal wind_speed_kt, wind_direction_deg, headwind_kt, crosswind_kt, groundspeed_kt, effective_speed_kt
@@ -457,40 +510,79 @@ def calculate_route_internal(
             and float(wind_speed_kt) >= 0
         )
 
-        for leg in planned_legs:
-            dist_nm = float(leg.get("distance_nm") or 0.0)
-            track_deg = float(leg.get("track_deg") or 0.0)
+        use_segment_legs = bool(req.avoid_terrain) and (len(route_codes) == 2) and bool(segments)
 
-            gs = float(speed_kt)
-            if has_wind:
-                head, _cross = wind.wind_components_kt(
-                    track_deg=track_deg,
-                    wind_from_deg=float(wind_direction_deg),
-                    wind_speed_kt=float(wind_speed_kt),
+        if use_segment_legs:
+            point_labels: List[str] = [route_codes[0].upper()]
+            for i in range(1, len(segments)):
+                point_labels.append(f"WP{i}")
+            point_labels.append(route_codes[-1].upper())
+
+            for idx, seg in enumerate(segments):
+                dist_nm = float(haversine_nm(seg.start[0], seg.start[1], seg.end[0], seg.end[1]))
+                track_deg = float(wind.bearing_deg(seg.start, seg.end))
+
+                gs = float(speed_kt)
+                if has_wind:
+                    head, _cross = wind.wind_components_kt(
+                        track_deg=track_deg,
+                        wind_from_deg=float(wind_direction_deg),
+                        wind_speed_kt=float(wind_speed_kt),
+                    )
+                    gs = max(30.0, float(speed_kt) - head)
+
+                ete_min = (dist_nm / gs) * 60.0 if gs > 0 else 0.0
+                elapsed += ete_min
+
+                legs_out.append(
+                    RouteLeg(
+                        from_code=point_labels[idx],
+                        to_code=point_labels[idx + 1],
+                        distance_nm=round(dist_nm, 1),
+                        groundspeed_kt=round(gs, 1),
+                        ete_minutes=round(ete_min, 1),
+                        type=seg.type,
+                        vfr_altitude=seg.vfr_altitude,
+                        refuel_minutes=0,
+                        elapsed_minutes=round(elapsed, 1),
+                        fuel_stop=False,
+                    )
                 )
-                gs = max(30.0, float(speed_kt) - head)
+        else:
+            for leg in planned_legs:
+                dist_nm = float(leg.get("distance_nm") or 0.0)
+                track_deg = float(leg.get("track_deg") or 0.0)
 
-            ete_min = (dist_nm / gs) * 60.0 if gs > 0 else 0.0
-            elapsed += ete_min
+                gs = float(speed_kt)
+                if has_wind:
+                    head, _cross = wind.wind_components_kt(
+                        track_deg=track_deg,
+                        wind_from_deg=float(wind_direction_deg),
+                        wind_speed_kt=float(wind_speed_kt),
+                    )
+                    gs = max(30.0, float(speed_kt) - head)
 
-            fuel_stop = bool(leg.get("fuel_stop"))
-            refuel = REFUEL_MINUTES if fuel_stop else 0
+                ete_min = (dist_nm / gs) * 60.0 if gs > 0 else 0.0
+                elapsed += ete_min
 
-            legs_out.append(
-                RouteLeg(
-                    from_code=str(leg.get("from_code") or ""),
-                    to_code=str(leg.get("to_code") or ""),
-                    distance_nm=round(dist_nm, 1),
-                    groundspeed_kt=round(gs, 1),
-                    ete_minutes=round(ete_min, 1),
-                    refuel_minutes=refuel,
-                    elapsed_minutes=round(elapsed, 1),
-                    fuel_stop=fuel_stop,
+                fuel_stop = bool(leg.get("fuel_stop"))
+                refuel = REFUEL_MINUTES if fuel_stop else 0
+
+                legs_out.append(
+                    RouteLeg(
+                        from_code=str(leg.get("from_code") or ""),
+                        to_code=str(leg.get("to_code") or ""),
+                        distance_nm=round(dist_nm, 1),
+                        groundspeed_kt=round(gs, 1),
+                        ete_minutes=round(ete_min, 1),
+                        refuel_minutes=refuel,
+                        elapsed_minutes=round(elapsed, 1),
+                        fuel_stop=fuel_stop,
+                    )
                 )
-            )
 
-            if fuel_stop:
-                elapsed += float(REFUEL_MINUTES)
+                if fuel_stop:
+                    elapsed += float(REFUEL_MINUTES)
 
         legs = legs_out
 

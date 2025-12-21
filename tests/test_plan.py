@@ -93,6 +93,73 @@ def test_plan_route_mode_terrain_does_not_require_opentopo_key(monkeypatch) -> N
     assert resp.status_code == 200
 
 
+def test_plan_route_mode_avoid_terrain_increases_altitude_and_splits_legs(monkeypatch) -> None:
+    def fake_get_airport_coordinates(code: str):
+        code_u = code.upper()
+        if code_u == "AAA":
+            return {"latitude": 0.0, "longitude": 0.0}
+        if code_u == "BBB":
+            return {"latitude": 0.0, "longitude": 0.15}
+        return None
+
+    import app.routers.route as route_router
+    from app.services.xctry_route_planner import RouteSegment
+
+    monkeypatch.setattr(route_router, "get_airport_coordinates", fake_get_airport_coordinates)
+
+    pts = [(0.0, 0.0), (0.0, 0.05), (0.0, 0.1), (0.0, 0.15)]
+    segs = [
+        RouteSegment(start=pts[0], end=pts[1], segment_type="cruise", vfr_altitude_ft=5500),
+        RouteSegment(start=pts[1], end=pts[2], segment_type="cruise", vfr_altitude_ft=5500),
+        RouteSegment(start=pts[2], end=pts[3], segment_type="cruise", vfr_altitude_ft=5500),
+    ]
+
+    monkeypatch.setattr(route_router, "plan_route", lambda **_: (pts, segs))
+
+    # Open-Meteo elevations are meters; the middle segment should force an 8000 ft flight level
+    # (max terrain ~6560 ft + 1000 ft clearance rounded up to nearest 500).
+    monkeypatch.setattr(
+        route_router.terrain_service,
+        "_fetch_open_meteo_elevations_m",
+        lambda _pts: [0.0, 0.0, 2000.0, 2000.0, 0.0, 0.0],
+    )
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/plan",
+        json={
+            "mode": "route",
+            "origin": "AAA",
+            "destination": "BBB",
+            "speed": 100.0,
+            "speed_unit": "knots",
+            "altitude": 5500,
+            "avoid_airspaces": False,
+            "avoid_terrain": True,
+            "apply_wind": False,
+            "include_alternates": False,
+        },
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+
+    assert len(body["segments"]) == 3
+    assert body["segments"][1]["vfr_altitude"] == 8000
+    assert body["segments"][1]["type"] == "climb"
+    assert body["segments"][2]["vfr_altitude"] == 5500
+    assert body["segments"][2]["type"] == "descent"
+
+    legs = body.get("legs")
+    assert legs is not None
+    assert len(legs) == 3
+    assert legs[0]["from_code"] == "AAA"
+    assert legs[0]["to_code"] == "WP1"
+    assert legs[1]["type"] == "climb"
+    assert legs[1]["vfr_altitude"] == 8000
+    assert legs[2]["to_code"] == "BBB"
+
+
 def test_plan_route_mode_astar_multi_leg(monkeypatch) -> None:
     import app.routers.route as route_router
 

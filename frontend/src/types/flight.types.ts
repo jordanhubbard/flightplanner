@@ -15,6 +15,8 @@ export interface RouteLeg {
   distance_nm: number
   groundspeed_kt: number
   ete_minutes: number
+  type?: 'climb' | 'cruise' | 'descent' | null
+  vfr_altitude?: number | null
   refuel_minutes: number
   elapsed_minutes: number
   fuel_stop: boolean

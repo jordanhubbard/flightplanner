@@ -58,6 +58,8 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
         distance_nm: l.distance_nm,
         groundspeed_kt: l.groundspeed_kt,
         ete_minutes: l.ete_minutes,
+        type: l.type || undefined,
+        vfr_altitude: l.vfr_altitude ?? undefined,
         elapsed_minutes: l.elapsed_minutes,
         refuel_minutes: l.refuel_minutes,
         fuel_stop: l.fuel_stop,
@@ -85,8 +87,9 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
 
   const columns = useMemo<GridColDef<LegRow>[]>(() => {
     if (hasWaypointLegs) {
+      const hasAltType = Boolean(plan.legs?.some((l) => l.vfr_altitude != null || l.type != null))
       if (isSmall) {
-        return [
+        const base: GridColDef<LegRow>[] = [
           { field: 'leg', headerName: 'Leg', width: 70 },
           { field: 'to', headerName: 'To', width: 90 },
           {
@@ -102,14 +105,55 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
             valueFormatter: (p) => fmtMinutes(p.value as number),
           },
         ]
+
+        if (!hasAltType) return base
+
+        return [
+          { field: 'leg', headerName: 'Leg', width: 70 },
+          { field: 'to', headerName: 'To', width: 90 },
+          { field: 'vfr_altitude', headerName: 'Alt', width: 90 },
+          { field: 'type', headerName: 'Type', width: 100 },
+        ]
       }
 
-      return [
+      const base: GridColDef<LegRow>[] = [
         { field: 'leg', headerName: 'Leg', width: 70 },
         { field: 'from', headerName: 'From', width: 100 },
         { field: 'to', headerName: 'To', width: 100 },
         { field: 'distance_nm', headerName: 'Distance (nm)', width: 130 },
         { field: 'groundspeed_kt', headerName: 'GS (kt)', width: 90 },
+        {
+          field: 'ete_minutes',
+          headerName: 'ETE',
+          width: 90,
+          valueFormatter: (p) => fmtMinutes(p.value as number),
+        },
+        {
+          field: 'refuel_minutes',
+          headerName: 'Refuel',
+          width: 90,
+          valueFormatter: (p) => {
+            const n = p.value as number
+            if (!Number.isFinite(n) || n <= 0) return '—'
+            return `+${Math.round(n)}m`
+          },
+        },
+        {
+          field: 'elapsed_minutes',
+          headerName: 'Elapsed',
+          width: 110,
+          valueFormatter: (p) => fmtMinutes(p.value as number),
+        },
+      ]
+
+      if (!hasAltType) return base
+      return [
+        { field: 'leg', headerName: 'Leg', width: 70 },
+        { field: 'from', headerName: 'From', width: 100 },
+        { field: 'to', headerName: 'To', width: 100 },
+        { field: 'distance_nm', headerName: 'Distance (nm)', width: 130 },
+        { field: 'vfr_altitude', headerName: 'Alt (ft)', width: 110 },
+        { field: 'type', headerName: 'Type', width: 110 },
         {
           field: 'ete_minutes',
           headerName: 'ETE',
@@ -152,7 +196,7 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
       { field: 'vfr_altitude', headerName: 'Alt (ft)', width: 110 },
       { field: 'type', headerName: 'Type', width: 110 },
     ]
-  }, [hasWaypointLegs, isSmall])
+  }, [hasWaypointLegs, isSmall, plan.legs])
 
   const totalElapsed = useMemo(() => {
     if (!hasWaypointLegs) return null

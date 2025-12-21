@@ -37,6 +37,8 @@ class RouteLeg(BaseModel):
     distance_nm: float
     groundspeed_kt: float
     ete_minutes: float
+    type: Optional[Literal["climb", "cruise", "descent"]] = None
+    vfr_altitude: Optional[int] = None
     refuel_minutes: int = 0
     elapsed_minutes: float
     fuel_stop: bool = False
