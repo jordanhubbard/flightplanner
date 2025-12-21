@@ -89,9 +89,17 @@ const AirportAirspaceMap: React.FC<Props> = ({ airport, radiusNm = 20, airspace 
 
         <FitToCircle center={center} radiusM={radiusM} />
 
-        <Circle center={[center[0], center[1]]} radius={radiusM} pathOptions={{ color: '#1976d2' }} />
+        <Circle
+          center={[center[0], center[1]]}
+          radius={radiusM}
+          pathOptions={{ color: '#1976d2' }}
+        />
 
-        <CircleMarker center={[center[0], center[1]]} radius={8} pathOptions={{ color: '#2e7d32' }} />
+        <CircleMarker
+          center={[center[0], center[1]]}
+          radius={8}
+          pathOptions={{ color: '#2e7d32' }}
+        />
 
         {geoJson.features.length ? (
           <GeoJSON

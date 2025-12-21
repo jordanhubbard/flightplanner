@@ -181,7 +181,12 @@ const FlightPlannerPage: React.FC = () => {
                   {routeStreamProgress.length ? (
                     <Box sx={{ mb: 1 }}>
                       {routeStreamProgress.slice(-5).map((p, idx) => (
-                        <Typography key={idx} variant="caption" display="block" color="text.secondary">
+                        <Typography
+                          key={idx}
+                          variant="caption"
+                          display="block"
+                          color="text.secondary"
+                        >
                           {p.message}
                         </Typography>
                       ))}
@@ -367,7 +372,12 @@ const FlightPlannerPage: React.FC = () => {
                     {routeStreamProgress.length ? (
                       <Box sx={{ mb: 1 }}>
                         {routeStreamProgress.slice(-5).map((p, idx) => (
-                          <Typography key={idx} variant="caption" display="block" color="text.secondary">
+                          <Typography
+                            key={idx}
+                            variant="caption"
+                            display="block"
+                            color="text.secondary"
+                          >
                             {p.message}
                           </Typography>
                         ))}
@@ -379,7 +389,9 @@ const FlightPlannerPage: React.FC = () => {
                   </Paper>
                 ) : (
                   <LoadingState
-                    message={lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'}
+                    message={
+                      lastMode === 'route' ? 'Planning route...' : 'Planning local flight...'
+                    }
                   />
                 )
               ) : (

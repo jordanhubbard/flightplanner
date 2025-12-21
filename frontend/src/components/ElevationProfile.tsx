@@ -57,11 +57,7 @@ const ElevationProfile: React.FC<Props> = ({ plan }) => {
   }
 
   if (query.isError) {
-    return (
-      <Alert severity="info">
-        Elevation profile unavailable.
-      </Alert>
-    )
+    return <Alert severity="info">Elevation profile unavailable.</Alert>
   }
 
   if (!chartData) {
