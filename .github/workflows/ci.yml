@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
@@ -87,7 +87,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          fetch-depth: 1
 
       - uses: actions/setup-python@v5
         with:
@@ -122,7 +122,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          fetch-depth: 1
 
       - name: Build backend image
         run: docker build -f backend/Dockerfile .

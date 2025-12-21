@@ -3,7 +3,9 @@ import type { Airport } from '../types'
 
 export const airportService = {
   search: async (query: string): Promise<Airport[]> => {
-    const response = await apiClient.get<Airport[]>(`/airports/search?q=${query}`)
+    const response = await apiClient.get<Airport[]>('/airports/search', {
+      params: { q: query, limit: 50 },
+    })
     return response.data
   },
 

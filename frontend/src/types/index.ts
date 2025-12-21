@@ -24,3 +24,4 @@ export type {
 } from './weather.types'
 export type { Airport } from './airport.types'
 export type { TerrainProfilePoint, TerrainProfileResponse } from './terrain.types'
+export type { GeoJsonFeatureCollection, GeoJsonFeature, GeoJsonGeometry } from './airspace.types'

@@ -25,7 +25,12 @@ from app.services.planning_runtime import (
 )
 from app.services import terrain_service
 from app.services import wind
-from app.services.xctry_route_planner import RouteSegment, get_leg_sample_points, haversine_nm, plan_route
+from app.services.xctry_route_planner import (
+    RouteSegment,
+    get_leg_sample_points,
+    haversine_nm,
+    plan_route,
+)
 
 
 router = APIRouter()

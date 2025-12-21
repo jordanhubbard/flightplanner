@@ -6,13 +6,18 @@ import {
   CardContent,
   Box,
   Chip,
-  List,
-  ListItem,
-  ListItemText,
   Typography,
+  Slider,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
 } from '@mui/material'
+import { DataGrid, type GridColDef } from '@mui/x-data-grid'
 import { LocalAirport, Search, LocationOn } from '@mui/icons-material'
 import toast from 'react-hot-toast'
+import { useQuery } from 'react-query'
 import {
   PageHeader,
   FormSection,
@@ -22,15 +27,19 @@ import {
   SearchHistoryDropdown,
   FavoriteButton,
 } from '../components/shared'
-import { useApiMutation, useSearchHistory, useFavorites } from '../hooks'
-import { airportService } from '../services'
+import AirportAirspaceMap from '../components/AirportAirspaceMap'
+import { useApiMutation, useSearchHistory, useFavorites, useForecast } from '../hooks'
+import { airportService, airspaceService } from '../services'
 import { validateRequired } from '../utils'
 import type { Airport } from '../types'
+
+const AIRSPACE_RADIUS_NM = 20
 
 const AirportsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [searchError, setSearchError] = useState<string>('')
   const [showHistory, setShowHistory] = useState(false)
+  const [forecastDays, setForecastDays] = useState<number>(1)
 
   const { addToHistory, getRecentSearches, clearHistory } = useSearchHistory()
   const { isFavorite, addFavorite, removeFavorite } = useFavorites()
@@ -62,6 +71,7 @@ const AirportsPage: React.FC = () => {
   }
 
   const handleSelectAirport = (icao: string) => {
+    setForecastDays(1)
     detailsMutation.mutate(icao)
   }
 
@@ -97,6 +107,50 @@ const AirportsPage: React.FC = () => {
 
   const airports = searchMutation.data || []
   const selectedAirport = detailsMutation.data
+
+  const airspaceQuery = useQuery(
+    ['airspace', selectedAirport?.icao, selectedAirport?.latitude, selectedAirport?.longitude],
+    () =>
+      airspaceService.getNearby({
+        lat: selectedAirport?.latitude as number,
+        lon: selectedAirport?.longitude as number,
+        radiusNm: AIRSPACE_RADIUS_NM,
+      }),
+    {
+      enabled:
+        !!selectedAirport &&
+        typeof selectedAirport.latitude === 'number' &&
+        typeof selectedAirport.longitude === 'number',
+      staleTime: 30 * 60 * 1000,
+      retry: 1,
+    },
+  )
+
+  const forecast = useForecast(selectedAirport?.icao || '', forecastDays)
+
+  const columns: GridColDef[] = [
+    {
+      field: 'favorite',
+      headerName: '',
+      width: 64,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <FavoriteButton
+          isFavorite={isFavorite(params.row.icao)}
+          onToggle={() => handleFavoriteToggle(params.row as Airport)}
+          size="small"
+          label={params.row.icao}
+        />
+      ),
+    },
+    { field: 'name', headerName: 'Name', flex: 1, minWidth: 220 },
+    { field: 'icao', headerName: 'ICAO', width: 90 },
+    { field: 'iata', headerName: 'IATA', width: 80 },
+    { field: 'city', headerName: 'City', width: 140 },
+    { field: 'country', headerName: 'Country', width: 110 },
+    { field: 'type', headerName: 'Type', width: 140 },
+  ]
 
   return (
     <Box>
@@ -149,46 +203,21 @@ const AirportsPage: React.FC = () => {
           ) : airports.length > 0 ? (
             <Box sx={{ mt: 3 }}>
               <ResultsSection title={`Search Results (${airports.length})`}>
-                <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-                  {airports.map((airport) => (
-                    <ListItem
-                      key={airport.icao}
-                      component="button"
-                      onClick={() => handleSelectAirport(airport.icao)}
-                      sx={{
-                        border: 1,
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        mb: 1,
-                        cursor: 'pointer',
-                        '&:hover': {
-                          bgcolor: 'action.hover',
-                        },
-                      }}
-                      secondaryAction={
-                        <FavoriteButton
-                          isFavorite={isFavorite(airport.icao)}
-                          onToggle={() => handleFavoriteToggle(airport)}
-                          size="small"
-                          label={airport.icao}
-                        />
-                      }
-                    >
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="subtitle1">{airport.name}</Typography>
-                            <Chip label={airport.icao} size="small" variant="outlined" />
-                            {airport.iata && (
-                              <Chip label={airport.iata} size="small" variant="outlined" />
-                            )}
-                          </Box>
-                        }
-                        secondary={`${airport.city}, ${airport.country}`}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
+                <Box sx={{ height: 440 }}>
+                  <DataGrid
+                    rows={airports}
+                    columns={columns}
+                    getRowId={(row) => row.icao || row.iata || `${row.latitude},${row.longitude}`}
+                    disableRowSelectionOnClick
+                    onRowClick={(params) =>
+                      handleSelectAirport(String(params.row.icao || params.row.iata))
+                    }
+                    pageSizeOptions={[10, 20, 50]}
+                    initialState={{
+                      pagination: { paginationModel: { pageSize: 20, page: 0 } },
+                    }}
+                  />
+                </Box>
               </ResultsSection>
             </Box>
           ) : null}
@@ -199,7 +228,7 @@ const AirportsPage: React.FC = () => {
             <LoadingState message="Loading airport details..." />
           ) : selectedAirport ? (
             <ResultsSection title="Airport Details">
-              <Card>
+              <Card sx={{ mb: 2 }}>
                 <CardContent>
                   <Box
                     sx={{
@@ -263,6 +292,61 @@ const AirportsPage: React.FC = () => {
                   </Grid>
                 </CardContent>
               </Card>
+
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Map (within {AIRSPACE_RADIUS_NM} NM) + airspace overlay
+              </Typography>
+              <AirportAirspaceMap
+                airport={selectedAirport}
+                radiusNm={AIRSPACE_RADIUS_NM}
+                airspace={airspaceQuery.data}
+              />
+
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Forecast (days: {forecastDays})
+                </Typography>
+                <Slider
+                  value={forecastDays}
+                  min={1}
+                  max={7}
+                  step={1}
+                  marks
+                  onChange={(_e, v) => setForecastDays(v as number)}
+                  aria-label="Forecast days"
+                />
+
+                {forecast.isLoading ? (
+                  <LoadingState message="Loading forecast..." />
+                ) : forecast.isError ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Forecast unavailable.
+                  </Typography>
+                ) : forecast.data ? (
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Date (UTC)</TableCell>
+                        <TableCell align="right">High (°F)</TableCell>
+                        <TableCell align="right">Low (°F)</TableCell>
+                        <TableCell align="right">Precip (mm)</TableCell>
+                        <TableCell align="right">Max wind (kt)</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {forecast.data.daily.map((d) => (
+                        <TableRow key={d.date}>
+                          <TableCell>{d.date}</TableCell>
+                          <TableCell align="right">{d.temp_max_f ?? '—'}</TableCell>
+                          <TableCell align="right">{d.temp_min_f ?? '—'}</TableCell>
+                          <TableCell align="right">{d.precipitation_mm ?? '—'}</TableCell>
+                          <TableCell align="right">{d.wind_speed_max_kt ?? '—'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : null}
+              </Box>
             </ResultsSection>
           ) : (
             <EmptyState
