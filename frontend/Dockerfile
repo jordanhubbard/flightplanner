@@ -11,6 +11,12 @@ RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime
 
+ARG REPO_URL=""
+ARG GIT_SHA=""
+
+LABEL org.opencontainers.image.source=$REPO_URL \
+      org.opencontainers.image.revision=$GIT_SHA
+
 ENV PORT=80 \
     BACKEND_URL=http://backend:8000 \
     BACKEND_HOST=backend \

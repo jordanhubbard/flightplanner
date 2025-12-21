@@ -28,6 +28,13 @@ RUN python -m venv /opt/venv \
 
 FROM base AS runtime
 
+ARG REPO_URL=""
+ARG GIT_SHA=""
+ARG BUILD_TIME_UTC=""
+
+LABEL org.opencontainers.image.source=$REPO_URL \
+      org.opencontainers.image.revision=$GIT_SHA
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         gdal-bin \
@@ -38,6 +45,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PATH="/opt/venv/bin:$PATH"
+
+ENV REPO_URL=$REPO_URL \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME_UTC=$BUILD_TIME_UTC
 
 COPY --from=builder /opt/venv /opt/venv
 

@@ -1,5 +1,7 @@
 type RuntimeEnv = {
   VITE_OPENWEATHERMAP_API_KEY?: string
+  VITE_REPO_URL?: string
+  VITE_GIT_SHA?: string
 }
 
 export function getRuntimeEnv<K extends keyof RuntimeEnv>(key: K): RuntimeEnv[K] | undefined {

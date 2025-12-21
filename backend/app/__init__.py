@@ -19,7 +19,7 @@ from starlette.staticfiles import StaticFiles
 
 from app.config import Settings
 from app.openapi import APP_DESCRIPTION, OPENAPI_TAGS
-from app.routers import airspace, airports, beads, health, local, plan, route, terrain, weather
+from app.routers import airspace, airports, beads, health, local, meta, plan, route, terrain, weather
 from app.services.beads_reporter import (
     beads_issue_creator,
     maybe_install_log_handler,
@@ -102,6 +102,7 @@ def create_app(settings: Settings) -> FastAPI:
     app.include_router(local.router, prefix=settings.api_prefix, tags=["local"])
     app.include_router(airspace.router, prefix=settings.api_prefix, tags=["airspace"])
     app.include_router(terrain.router, prefix=settings.api_prefix, tags=["terrain"])
+    app.include_router(meta.router, prefix=settings.api_prefix, tags=["meta"])
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):
@@ -131,6 +132,12 @@ def create_app(settings: Settings) -> FastAPI:
             payload = {}
             if key:
                 payload["VITE_OPENWEATHERMAP_API_KEY"] = key
+            repo_url = os.environ.get("VITE_REPO_URL") or os.environ.get("REPO_URL") or ""
+            if repo_url:
+                payload["VITE_REPO_URL"] = repo_url
+            git_sha = os.environ.get("VITE_GIT_SHA") or os.environ.get("GIT_SHA") or ""
+            if git_sha:
+                payload["VITE_GIT_SHA"] = git_sha
             payload["VITE_BEADS_AUTOREPORT"] = "1" if beads_issue_creator.enabled() else "0"
             js = "window.__ENV__ = window.__ENV__ || {};\n"
             for k, v in payload.items():
