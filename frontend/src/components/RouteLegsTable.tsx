@@ -16,13 +16,28 @@ type LegRow = {
   from: string
   to: string
   distance_nm: number
-  type: string
-  vfr_altitude: number
+  groundspeed_kt?: number
+  ete_minutes?: number
+  elapsed_minutes?: number
+  refuel_minutes?: number
+  fuel_stop?: boolean
+  type?: string
+  vfr_altitude?: number
+}
+
+const fmtMinutes = (mins?: number | null) => {
+  if (mins == null || !Number.isFinite(mins)) return '—'
+  const total = Math.max(0, Math.round(mins))
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  return `${h}:${String(m).padStart(2, '0')}`
 }
 
 const RouteLegsTable: React.FC<Props> = ({ plan }) => {
   const theme = useTheme()
   const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
+
+  const hasWaypointLegs = Boolean(plan.legs && plan.legs.length)
   const points = useMemo(() => {
     if (!plan.segments || plan.segments.length === 0) {
       return [plan.origin_coords, plan.destination_coords]
@@ -34,6 +49,21 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
   }, [plan])
 
   const rows = useMemo<LegRow[]>(() => {
+    if (hasWaypointLegs) {
+      return (plan.legs || []).map((l, idx) => ({
+        id: idx,
+        leg: idx + 1,
+        from: l.from_code,
+        to: l.to_code,
+        distance_nm: l.distance_nm,
+        groundspeed_kt: l.groundspeed_kt,
+        ete_minutes: l.ete_minutes,
+        elapsed_minutes: l.elapsed_minutes,
+        refuel_minutes: l.refuel_minutes,
+        fuel_stop: l.fuel_stop,
+      }))
+    }
+
     const out: LegRow[] = []
     for (let i = 0; i < points.length - 1; i++) {
       const a = points[i]
@@ -51,9 +81,60 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
       })
     }
     return out
-  }, [plan.segments, points])
+  }, [hasWaypointLegs, plan.legs, plan.segments, points])
 
   const columns = useMemo<GridColDef<LegRow>[]>(() => {
+    if (hasWaypointLegs) {
+      if (isSmall) {
+        return [
+          { field: 'leg', headerName: 'Leg', width: 70 },
+          { field: 'to', headerName: 'To', width: 90 },
+          {
+            field: 'ete_minutes',
+            headerName: 'ETE',
+            width: 90,
+            valueFormatter: (p) => fmtMinutes(p.value as number),
+          },
+          {
+            field: 'elapsed_minutes',
+            headerName: 'Elapsed',
+            width: 110,
+            valueFormatter: (p) => fmtMinutes(p.value as number),
+          },
+        ]
+      }
+
+      return [
+        { field: 'leg', headerName: 'Leg', width: 70 },
+        { field: 'from', headerName: 'From', width: 100 },
+        { field: 'to', headerName: 'To', width: 100 },
+        { field: 'distance_nm', headerName: 'Distance (nm)', width: 130 },
+        { field: 'groundspeed_kt', headerName: 'GS (kt)', width: 90 },
+        {
+          field: 'ete_minutes',
+          headerName: 'ETE',
+          width: 90,
+          valueFormatter: (p) => fmtMinutes(p.value as number),
+        },
+        {
+          field: 'refuel_minutes',
+          headerName: 'Refuel',
+          width: 90,
+          valueFormatter: (p) => {
+            const n = p.value as number
+            if (!Number.isFinite(n) || n <= 0) return '—'
+            return `+${Math.round(n)}m`
+          },
+        },
+        {
+          field: 'elapsed_minutes',
+          headerName: 'Elapsed',
+          width: 110,
+          valueFormatter: (p) => fmtMinutes(p.value as number),
+        },
+      ]
+    }
+
     if (isSmall) {
       return [
         { field: 'leg', headerName: 'Leg', width: 70 },
@@ -71,7 +152,13 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
       { field: 'vfr_altitude', headerName: 'Alt (ft)', width: 110 },
       { field: 'type', headerName: 'Type', width: 110 },
     ]
-  }, [isSmall])
+  }, [hasWaypointLegs, isSmall])
+
+  const totalElapsed = useMemo(() => {
+    if (!hasWaypointLegs) return null
+    const last = rows[rows.length - 1]
+    return last?.elapsed_minutes ?? null
+  }, [hasWaypointLegs, rows])
 
   return (
     <Box>
@@ -85,8 +172,22 @@ const RouteLegsTable: React.FC<Props> = ({ plan }) => {
         density="compact"
         disableRowSelectionOnClick
         hideFooter
-        sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}
+        getRowClassName={(p) => (p.row.fuel_stop ? 'fuel-stop-row' : '')}
+        sx={{
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 1,
+          '& .fuel-stop-row': {
+            bgcolor: 'rgba(255, 193, 7, 0.15)',
+          },
+        }}
       />
+
+      {totalElapsed != null ? (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          Total elapsed: {fmtMinutes(totalElapsed)}
+        </Typography>
+      ) : null}
     </Box>
   )
 }

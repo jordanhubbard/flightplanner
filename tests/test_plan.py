@@ -142,6 +142,19 @@ def test_plan_route_mode_astar_multi_leg(monkeypatch) -> None:
     assert body["fuel_stops"] == ["BBB"]
     assert body["fuel_required_with_reserve_gal"] is not None
 
+    legs = body.get("legs")
+    assert legs is not None
+    assert len(legs) == 2
+    assert legs[0]["from_code"] == "AAA"
+    assert legs[0]["to_code"] == "BBB"
+    assert legs[0]["fuel_stop"] is True
+    assert legs[0]["refuel_minutes"] == 30
+    assert legs[1]["from_code"] == "BBB"
+    assert legs[1]["to_code"] == "CCC"
+    assert legs[1]["fuel_stop"] is False
+    assert legs[1]["refuel_minutes"] == 0
+    assert legs[1]["elapsed_minutes"] >= legs[0]["elapsed_minutes"] + 30
+
 
 def test_plan_route_mode_astar_multi_leg_from_fuel_on_board(monkeypatch) -> None:
     import app.routers.route as route_router

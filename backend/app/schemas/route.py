@@ -31,6 +31,17 @@ class Segment(BaseModel):
     vfr_altitude: int
 
 
+class RouteLeg(BaseModel):
+    from_code: str
+    to_code: str
+    distance_nm: float
+    groundspeed_kt: float
+    ete_minutes: float
+    refuel_minutes: int = 0
+    elapsed_minutes: float
+    fuel_stop: bool = False
+
+
 class AlternateWeather(BaseModel):
     metar: Optional[str] = None
     visibility_sm: Optional[float] = None
@@ -55,6 +66,7 @@ class RouteResponse(BaseModel):
     origin_coords: Tuple[float, float]
     destination_coords: Tuple[float, float]
     segments: List[Segment]
+    legs: Optional[List[RouteLeg]] = None
     alternates: Optional[List[AlternateAirport]] = None
     fuel_stops: Optional[List[str]] = None
     fuel_burn_gph: Optional[float] = None

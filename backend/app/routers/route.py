@@ -8,7 +8,7 @@ from typing import Any, List, Literal, Optional
 from fastapi import APIRouter, HTTPException
 
 from app.models.airport import get_airport_coordinates, load_airport_cache
-from app.schemas.route import RouteRequest, RouteResponse, Segment
+from app.schemas.route import RouteLeg, RouteRequest, RouteResponse, Segment
 from app.services import a_star
 from app.services.alternates import recommend_alternates
 from app.services import open_meteo
@@ -200,10 +200,13 @@ def calculate_route_internal(
         ctx.check_deadline()
         ctx.check_cancelled()
 
+    planned_legs: List[dict[str, Any]] = []
+
     try:
         t0 = time.perf_counter()
         points: List[tuple[float, float]] = []
         planned_segments: List[Any] = []
+        fuel_stop_codes = {c.upper() for c in (route_codes[1:-1] or [])}
 
         total_legs = max(1, len(route_codes) - 1)
         for i in range(total_legs):
@@ -227,6 +230,28 @@ def calculate_route_internal(
                 destination=(float(b_ap["latitude"]), float(b_ap["longitude"])),
                 cruising_altitude_ft=req.altitude,
                 avoid_airspaces_enabled=req.avoid_airspaces,
+            )
+
+            leg_dist_nm = 0.0
+            for j in range(len(leg_points) - 1):
+                leg_dist_nm += haversine_nm(
+                    leg_points[j][0],
+                    leg_points[j][1],
+                    leg_points[j + 1][0],
+                    leg_points[j + 1][1],
+                )
+
+            planned_legs.append(
+                {
+                    "from_code": a_code,
+                    "to_code": b_code,
+                    "distance_nm": leg_dist_nm,
+                    "track_deg": wind.bearing_deg(
+                        (float(a_ap["latitude"]), float(a_ap["longitude"])),
+                        (float(b_ap["latitude"]), float(b_ap["longitude"])),
+                    ),
+                    "fuel_stop": b_code.upper() in fuel_stop_codes,
+                }
             )
 
             if not points:
@@ -296,6 +321,8 @@ def calculate_route_internal(
     effective_speed_kt = speed_kt
 
     alternates = None
+
+    legs: Optional[List[RouteLeg]] = None
 
     def _terrain_check() -> None:
         if not req.avoid_terrain:
@@ -418,6 +445,55 @@ def calculate_route_internal(
 
     total_time = total_dist / effective_speed_kt if effective_speed_kt else 0.0
 
+    if planned_legs:
+        REFUEL_MINUTES = 30
+        elapsed = 0.0
+        legs_out: List[RouteLeg] = []
+
+        has_wind = (
+            req.apply_wind
+            and wind_speed_kt is not None
+            and wind_direction_deg is not None
+            and float(wind_speed_kt) >= 0
+        )
+
+        for leg in planned_legs:
+            dist_nm = float(leg.get("distance_nm") or 0.0)
+            track_deg = float(leg.get("track_deg") or 0.0)
+
+            gs = float(speed_kt)
+            if has_wind:
+                head, _cross = wind.wind_components_kt(
+                    track_deg=track_deg,
+                    wind_from_deg=float(wind_direction_deg),
+                    wind_speed_kt=float(wind_speed_kt),
+                )
+                gs = max(30.0, float(speed_kt) - head)
+
+            ete_min = (dist_nm / gs) * 60.0 if gs > 0 else 0.0
+            elapsed += ete_min
+
+            fuel_stop = bool(leg.get("fuel_stop"))
+            refuel = REFUEL_MINUTES if fuel_stop else 0
+
+            legs_out.append(
+                RouteLeg(
+                    from_code=str(leg.get("from_code") or ""),
+                    to_code=str(leg.get("to_code") or ""),
+                    distance_nm=round(dist_nm, 1),
+                    groundspeed_kt=round(gs, 1),
+                    ete_minutes=round(ete_min, 1),
+                    refuel_minutes=refuel,
+                    elapsed_minutes=round(elapsed, 1),
+                    fuel_stop=fuel_stop,
+                )
+            )
+
+            if fuel_stop:
+                elapsed += float(REFUEL_MINUTES)
+
+        legs = legs_out
+
     fuel_burn = None
     reserve_minutes = None
     fuel_required = None
@@ -449,6 +525,7 @@ def calculate_route_internal(
         origin_coords=(o_lat, o_lon),
         destination_coords=(d_lat, d_lon),
         segments=segments,
+        legs=legs,
         alternates=alternates,
         fuel_stops=route_codes[1:-1] or None,
         fuel_burn_gph=fuel_burn,

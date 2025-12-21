@@ -9,6 +9,17 @@ export interface Segment {
   vfr_altitude: number
 }
 
+export interface RouteLeg {
+  from_code: string
+  to_code: string
+  distance_nm: number
+  groundspeed_kt: number
+  ete_minutes: number
+  refuel_minutes: number
+  elapsed_minutes: number
+  fuel_stop: boolean
+}
+
 export interface AlternateWeather {
   metar?: string | null
   visibility_sm?: number | null
@@ -33,6 +44,8 @@ export interface FlightPlan {
   origin_coords: [number, number]
   destination_coords: [number, number]
   segments: Segment[]
+
+  legs?: RouteLeg[] | null
 
   alternates?: AlternateAirport[] | null
 
