@@ -102,7 +102,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                 {showReload ? (
-                  <Button variant="contained" startIcon={<Refresh />} onClick={() => window.location.reload()}>
+                  <Button
+                    variant="contained"
+                    startIcon={<Refresh />}
+                    onClick={() => window.location.reload()}
+                  >
                     Reload
                   </Button>
                 ) : (

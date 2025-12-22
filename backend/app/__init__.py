@@ -19,7 +19,18 @@ from starlette.staticfiles import StaticFiles
 
 from app.config import Settings
 from app.openapi import APP_DESCRIPTION, OPENAPI_TAGS
-from app.routers import airspace, airports, beads, health, local, meta, plan, route, terrain, weather
+from app.routers import (
+    airspace,
+    airports,
+    beads,
+    health,
+    local,
+    meta,
+    plan,
+    route,
+    terrain,
+    weather,
+)
 from app.services.beads_reporter import (
     beads_issue_creator,
     maybe_install_log_handler,
